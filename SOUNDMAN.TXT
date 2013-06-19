@@ -1,0 +1,700 @@
+'Resource Interchange File Format
+DECLARE SUB WaveInfo ()
+DECLARE FUNCTION NewResetDSP% ()
+DECLARE SUB ResetDSP ()
+DECLARE SUB ResetMix ()
+DECLARE FUNCTION ReadDSP% ()
+DECLARE SUB WriteDSP (what%)
+DECLARE SUB VoiceVol (left%, right%, Set%)
+DECLARE SUB MasterVol (left%, right%, Set%)
+DECLARE SUB MidiVol (left%, right%, Set%)
+DECLARE SUB CdVol (left%, right%, Set%)
+DECLARE SUB LineVol (left%, right%, Set%)
+DECLARE SUB InputFilter (State%, Set%)
+DECLARE FUNCTION DSPVersion! ()
+DECLARE SUB SpeakerState (State%, Set%)
+DECLARE SUB InputMode (MonoStereo%)
+DECLARE SUB StereoSwitch (MonoStereo%)
+DECLARE SUB OutputFilter (State%, Set%)
+DECLARE SUB ExitDMAMode (DMAMode816%)
+DECLARE SUB ResumeDMAMode (DMAMode816%)
+DECLARE SUB PauseDMAMode (DMAMode816%)
+DECLARE SUB ProcessInit (DMAMode%, DMAIncrement%, DMAInitialize%, DMATransfer%, MonoStereo%, Sampling&)
+DECLARE SUB AckInterrupt ()
+DECLARE SUB DMAStart (Length&)
+DECLARE FUNCTION DMAOver% (Length&)
+DECLARE SUB DMAPaging (Buffer%)
+DECLARE FUNCTION IntegerToLong& (int1%)
+DECLARE SUB DSP8bitMonoSingleCycle (Length&)
+DECLARE SUB DSP8bitStereoHighSpeed (Length&)
+DECLARE SUB ConvStereo8 (Buffer%, Length&)
+DECLARE SUB ConvMono16 (Buffer%, Length&)
+DECLARE SUB ConvStereo16 (Buffer%, Length&)
+DECLARE SUB Convert (Buffer%, Length&)
+DECLARE SUB VolumeConv (Buffer%, Length&, Volume!)
+DECLARE SUB StartMenu ()
+
+'Command Understand
+DECLARE FUNCTION CommandNum% (st$)
+DECLARE FUNCTION CommandStr$ (st$, n%)
+
+'Microsoft Mouse
+'$INCLUDE: 'mouse.bi'
+
+CONST BufferSize = 32764, BufferSizem2 = 65528, BufferSized2 = 16382, BifferSizem4 = 131056
+
+
+TYPE WaveID
+        RiffID AS STRING * 4
+        RiffSize AS LONG
+        WaveID AS STRING * 4
+        FmtID AS STRING * 4
+        FmtSize AS LONG
+        AudioFmt AS INTEGER
+        NumChannels AS INTEGER
+        SampleRate AS LONG
+        ByteRate AS LONG
+        BlockAlign AS INTEGER
+        BitsPerSample AS INTEGER
+        DataID AS STRING * 4
+        DataSize AS LONG
+END TYPE
+DIM SHARED DSPBase%, DSPReset%, DSPRead%, DSPWrite%, DSPReadBuffer%, DSPWriteBuffer%
+DIM SHARED MixAddress%, MixData%, DMAChannel%, DMAPageReg%, DMAAddressReg%, DMACountReg%
+DIM SHARED DMAMaskReg%, DMAModeReg%, DMAClearReg%, DMAMasked%, DMAUnMasked%
+DIM SHARED DMAModeData%, DSPTimeConstant%, DMAPage%, DMAOffhigh%, DMAOfflow%
+DIM SHARED WaveFile(0) AS WaveID
+DIM SHARED WaveBuffer1(1) AS STRING * BufferSize
+DIM SHARED WaveBuffer2(1) AS STRING * BufferSize
+DIM SHARED Stereo%, Bit16%, Stereo8%, Pause%
+
+SCREEN 13
+StartMenu
+cmd$ = " " + COMMAND$ + " "
+OPEN "O", #2, "SoundMan.log"
+IF CommandNum%(cmd$) < 3 THEN PRINT #2, "Sorry... Wrong Command!!!": CLOSE #2: SYSTEM
+
+PRINT #2, "SoundMan  Music"
+PRINT #2, "---------------"
+IF NewResetDSP% THEN PRINT #2, "SoundBlaster is found." ELSE PRINT #2, "SoundBlaster not found!": CLOSE #2: SYSTEM
+MasterVol 15, 15, -1
+DMAChannel% = 1
+PRINT #2, "SoundBlaster Card Version :"; DSPVersion!
+PRINT #2, "Blaster Environment Variable :"; ENVIRON$("BLASTER")
+PRINT #2, ""
+PRINT #2, "Digital Sound Processor(DSP)"
+PRINT #2, "DSP Base Address :"; DSPBase%
+PRINT #2, "DSP Reset Address :"; DSPReset%
+PRINT #2, "DSP Read Address :"; DSPRead%
+PRINT #2, "DSP Write Address :"; DSPWrite%
+PRINT #2, "DSP ReadBuffer Address :"; DSPReadBuffer%
+PRINT #2, "DSP WriteBuffer Address :"; DSPWriteBuffer%
+PRINT #2, ""
+PRINT #2, "Direct Memory Access(DMA)"
+PRINT #2, "DMA Channel 1 selected."
+PRINT #2, ""
+
+fl1$ = CommandStr$(cmd$, 1)
+OPEN "B", #1, fl1$
+IF (LOF(1) = 0) THEN
+PRINT #2, "Oh no... File not found!!!"
+CLOSE #1, #2
+KILL fl1$
+SYSTEM
+END IF
+
+'Get Wave Information
+PRINT #2, "Wave File"
+PRINT #2, "---------"
+PRINT #2, ""
+PRINT #2, "Resource Interchange File Format(RIFF)"
+PRINT #2, ""
+PRINT #2, "File Name : "; fl1$
+GET #1, 1, WaveFile(0)
+WaveInfo
+IF (WaveFile(0).RiffID <> "RIFF") THEN PRINT "Error: Not a RIFF file.": CLOSE #1, #2: SYSTEM
+IF (WaveFile(0).WaveID <> "WAVE") THEN PRINT "Error: Not a WAVE file.": CLOSE #1, #2: SYSTEM
+IF (LEFT$(WaveFile(0).FmtID, 3) <> "fmt") THEN PRINT "Error: Bad Wave format": CLOSE #1, #2: SYSTEM
+IF (WaveFile(0).AudioFmt <> 1) THEN PRINT "Error: Not a PCM WAVE file.": CLOSE #1, #2: SYSTEM
+IF (WaveFile(0).NumChannels > 2) THEN PRINT "Error: Is this a Dolby Digital Audio File?": CLOSE #1, #2: SYSTEM
+IF (WaveFile(0).SampleRate > 48000) THEN PRINT "Error: More than possible Sampling rate.": CLOSE #1, #2: SYSTEM
+
+Stereo% = WaveFile(0).NumChannels - 1
+Bit16% = WaveFile(0).BlockAlign \ WaveFile(0).NumChannels - 1
+TransferLength& = BufferSizem2 \ WaveFile(0).BlockAlign
+SpeakerState 1, -1
+DataLength& = LOF(1) - (45 + WaveFile(0).FmtSize - 16)
+
+Stereo8% = 1
+'Select Mode
+Volume! = VAL(CommandStr$(cmd$, 2))
+PRINT #2, "Volume :"; Volume!
+
+IF Stereo% THEN
+Stereo8% = VAL(CommandStr$(cmd$, 3))
+PRINT #2, "Wave file is stereo."
+PRINT #2, "1 - Left"
+PRINT #2, "2 - Right"
+PRINT #2, "3 - Mixed"
+PRINT #2, "x - Hmixed"
+PRINT #2, "Select Mode-->"; Stereo8%
+END IF
+
+
+'Process Start
+IF Stereo8% > 3 OR Stereo8% < 1 THEN
+WaveFile(0).SampleRate = 2 * WaveFile(0).SampleRate
+IF Bit16% THEN TransferLength& = BufferSize ELSE TransferLength& = BufferSizem2
+END IF
+
+'Process Initialization
+SEEK #1, 45 + WaveFile(0).FmtSize - 16
+ProcessInit 1, 0, 0, 1, 0, WaveFile(0).SampleRate
+
+'Initial Play
+IF (DataLength& < BufferSizem2) THEN GOTO FinalPlay
+GET #1, , WaveBuffer2(0)
+GET #1, , WaveBuffer2(1)
+DMAPaging 2
+Convert 2, BufferSizem2
+VolumeConv 2, TransferLength&, Volume!
+DSP8bitMonoSingleCycle TransferLength&
+DataLength& = DataLength& - BufferSizem2
+PRINT #2, "Data Left:"; DataLength&
+
+'Looped Play
+DO
+IF Pause% THEN
+GOSUB InTime
+GOTO LoopEnd
+END IF
+IF (DataLength& < BufferSizem2) THEN GOTO FinalPlay
+GET #1, , WaveBuffer1(0)
+GET #1, , WaveBuffer1(1)
+DMAPaging 1
+Convert 1, BufferSizem2
+VolumeConv 1, TransferLength&, Volume!
+DO
+GOSUB InTime
+LOOP UNTIL DMAOver%(TransferLength&)
+DSP8bitMonoSingleCycle TransferLength&
+DataLength& = DataLength& - BufferSizem2
+PRINT #2, "Data Left:"; DataLength&
+
+IF Pause% THEN
+GOSUB InTime
+GOTO LoopEnd
+END IF
+IF (DataLength& < BufferSizem2) THEN GOTO FinalPlay
+GET #1, , WaveBuffer2(0)
+GET #1, , WaveBuffer2(1)
+DMAPaging 2
+Convert 2, BufferSizem2
+VolumeConv 2, TransferLength&, Volume!
+DO
+GOSUB InTime
+LOOP UNTIL DMAOver%(TransferLength&)
+DSP8bitMonoSingleCycle TransferLength&
+DataLength& = DataLength& - BufferSizem2
+PRINT #2, "Data Left:"; DataLength&
+LoopEnd:
+LOOP
+
+'Final Play
+FinalPlay:
+DO
+GOSUB InTime
+LOOP UNTIL DMAOver%(TransferLength&)
+GET #1, , WaveBuffer1(0)
+GET #1, , WaveBuffer1(1)
+DMAPaging 1
+Convert 1, BufferSizem2
+VolumeConv 1, TransferLength&, Volume!
+DSP8bitMonoSingleCycle DataLength&
+DataLength& = 0
+PRINT #2, "Data Left:"; DataLength&
+DO
+GOSUB InTime
+LOOP UNTIL DMAOver%(TransferLength&)
+Exita:
+SpeakerState 0, -1
+ExitDMAMode 0
+ResetDSP
+
+CLOSE #1
+PRINT #2, "All Done"
+SYSTEM
+
+
+'In time drawing
+InTime:
+k$ = INKEY$
+IF k$ <> "" THEN GOSUB KeyHandle
+RETURN
+
+KeyHandle:
+k$ = LCASE$(k$)
+SELECT CASE k$
+CASE CHR$(27)
+GOTO Exita
+CASE "p"
+PauseDMAMode 0
+CASE "r"
+PauseDMAMode 1
+CASE ELSE
+END SELECT
+RETURN
+
+SUB AckInterrupt
+IF (DMAChannel% <= 3) THEN Ack% = INP(DSPBase% + &HE) ELSE Ack% = INP(DSPBase% + &HF)
+'OUT &H20, &H20
+END SUB
+
+SUB CdVol (left%, right%, Set%)
+OUT MixAddress%, &H28
+IF Set% THEN
+a% = left% * &H10 + right%
+OUT MixDtata%, a%
+ELSE
+a% = INP(MixData%)
+left% = a% \ &H10
+right% = a% AND &HF
+END IF
+END SUB
+
+FUNCTION CommandNum% (st$)
+n% = -1
+FOR i% = 1 TO LEN(st$)
+IF (MID$(st$, i%, 1) = " ") THEN n% = n% + 1
+NEXT
+CommandNum% = n%
+END FUNCTION
+
+FUNCTION CommandStr$ (st$, n%)
+n1% = 0
+FOR i% = 1 TO LEN(st$)
+IF (MID$(st$, i%, 1) = " ") THEN
+n1% = n1% + 1
+IF (n1% = n%) THEN EXIT FOR
+END IF
+NEXT
+FOR j% = i% + 1 TO LEN(st$)
+IF (MID$(st$, j%, 1) = " ") THEN EXIT FOR
+NEXT
+a$ = MID$(st$, i% + 1, j% - i%)
+CommandStr$ = a$
+END FUNCTION
+
+SUB Convert (Buffer%, Length&)
+IF Bit16% AND Stereo% THEN
+ConvStereo16 Buffer%, Length&
+ELSEIF Bit16% THEN
+ConvMono16 Buffer%, Length&
+ELSEIF Stereo% THEN
+ConvStereo8 Buffer%, Length&
+END IF
+END SUB
+
+SUB ConvMono16 (Buffer%, Length&)
+IF (Buffer% = 1) THEN
+DEF SEG = VARSEG(WaveBuffer1(0))
+ELSE
+DEF SEG = VARSEG(WaveBuffer2(0))
+END IF
+x& = 0
+FOR i& = 1 TO Length& - 1 STEP 2
+POKE x&, (PEEK(i&) + &H80) AND &HFF
+x& = x& + 1
+NEXT
+END SUB
+
+SUB ConvStereo16 (Buffer%, Length&)
+IF (Buffer% = 1) THEN
+DEF SEG = VARSEG(WaveBuffer1(0))
+ELSE
+DEF SEG = VARSEG(WaveBuffer2(0))
+END IF
+x& = 0
+SELECT CASE Stereo8%
+CASE 1
+FOR i& = 1 TO Length& - 1 STEP 4
+POKE x&, (PEEK(i&) + &H80) AND &HFF
+x& = x& + 1
+NEXT
+CASE 2
+FOR i& = 3 TO Length& - 1 STEP 4
+POKE x&, (PEEK(i&) + &H80) AND &HFF
+x& = x& + 1
+NEXT
+CASE 3
+FOR i& = 1 TO Length& - 1 STEP 4
+POKE x&, (((PEEK(i&) + &H80) AND &HFF) + ((PEEK(i& + 2) + &H80) AND &HFF)) \ 2
+x& = x& + 1
+NEXT
+CASE ELSE
+FOR i& = 1 TO Length& - 1 STEP 4
+POKE x&, (PEEK(i&) + &H80) AND &HFF
+POKE x& + 1, (PEEK(i& + 2) + &H80) AND &HFF
+x& = x& + 2
+NEXT
+END SELECT
+DEF SEG
+END SUB
+
+SUB ConvStereo8 (Buffer%, Length&)
+IF (Buffer% = 1) THEN
+DEF SEG = VARSEG(WaveBuffer1(0))
+ELSE
+DEF SEG = VARSEG(WaveBuffer2(0))
+END IF
+x& = 0
+SELECT CASE Stereo8%
+CASE 1
+FOR i& = 0 TO Length& - 1 STEP 2
+POKE x&, PEEK(i&)
+x& = x& + 1
+NEXT
+CASE 2
+FOR i& = 1 TO Length& - 1 STEP 2
+POKE x&, PEEK(i&)
+x& = x& + 1
+NEXT
+CASE 3
+FOR i& = 0 TO Length& - 1 STEP 2
+POKE x&, (PEEK(i&) + PEEK(i& + 1)) \ 2
+x& = x& + 1
+NEXT
+CASE ELSE
+END SELECT
+DEF SEG
+END SUB
+
+FUNCTION DMAOver% (Length&)
+count& = INP(DMACountReg%) + CLNG(INP(DMACountReg%)) * &H100
+IF (count& > Length& - 1) THEN
+AckInterrupt
+DMAOver% = -1
+END IF
+END FUNCTION
+
+SUB DMAPaging (Buffer%)
+IF (Buffer% = 1) THEN
+a1& = IntegerToLong&(VARSEG(WaveBuffer1(0))) * &H10 + IntegerToLong&(VARPTR(WaveBuffer1(0)))
+ELSE
+a1& = IntegerToLong&(VARSEG(WaveBuffer2(0))) * &H10 + IntegerToLong&(VARPTR(WaveBuffer2(0)))
+END IF
+DMAPage% = a1& \ &H10000
+DMAOffhigh% = (a1& AND &HFF00) \ &H100
+DMAOfflow% = a1& AND &HFF
+END SUB
+
+SUB DMAStart (Length&)
+OUT DMAMaskReg%, DMAMasked%
+OUT DMAClearReg%, 0
+OUT DMAModeReg%, DMAModeData%
+OUT DMAAddressReg%, DMAOfflow%
+OUT DMAAddressReg%, DMAOffhigh%
+OUT DMAPageReg%, DMAPage%
+OUT DMACountReg%, (Length& - 1) AND &HFF
+OUT DMACountReg%, (Length& - 1) \ &H100
+OUT DMAMaskReg%, DMAUnMasked%
+WriteDSP &H40
+WriteDSP DSPTimeConstant%
+END SUB
+
+SUB DSP8bitMonoSingleCycle (Length&)
+DMAStart Length&
+WriteDSP &H14
+WriteDSP ((Length& - 1) AND &HFF)
+WriteDSP ((Length& - 1) \ &H100)
+END SUB
+
+SUB DSP8bitStereoHighSpeed (Length&)
+DMAStart Length&
+WriteDSP &H91
+WriteDSP ((Length& - 1) AND &HFF)
+WriteDSP ((Length& - 1) \ &H100)
+END SUB
+
+FUNCTION DSPVersion!
+WriteDSP &HE1
+a! = ReadDSP% + ReadDSP% * .01
+DSPVersion! = a!
+END FUNCTION
+
+SUB ExitDMAMode (DMAMode816%)
+IF DMAMode816% THEN WriteDSP &HD9 ELSE WriteDSP &HDA
+END SUB
+
+SUB InputFilter (State%, Set%)
+OUT MixAddress%, &HC
+a% = INP(MixData%)
+IF Set% THEN
+a% = a% AND &HDF
+a% = a% OR State%
+OUT MixData%, a%
+ELSE
+State% = (a% AND &H20) \ &H20
+END IF
+END SUB
+
+SUB InputMode (MonoStereo%)
+IF MonoStereo% THEN WriteDSP &HA8 ELSE WriteDSP &HA0
+END SUB
+
+FUNCTION IntegerToLong& (int1%)
+IF (int1% >= 0) THEN a1& = int1% ELSE a1& = 65536 + CLNG(int1%)
+IntegerToLong& = a1&
+END FUNCTION
+
+SUB LineVol (left%, right%, Set%)
+OUT MixAddress%, &H2E
+IF Set% THEN
+a% = left% * &H10 + right%
+OUT MixDtata%, a%
+ELSE
+a% = INP(MixData%)
+left% = a% \ &H10
+right% = a% AND &HF
+END IF
+END SUB
+
+SUB MasterVol (left%, right%, Set%)
+OUT MixAddress%, &H22
+IF Set% THEN
+a% = left% * &H10 + right%
+OUT MixDtata%, a%
+ELSE
+a% = INP(MixData%)
+left% = a% \ &H10
+right% = a% AND &HF
+END IF
+END SUB
+
+SUB MidiVol (left%, right%, Set%)
+OUT MixAddress%, &H26
+IF Set% THEN
+a% = left% * &H10 + right%
+OUT MixDtata%, a%
+ELSE
+a% = INP(MixData%)
+left% = a% \ &H10
+right% = a% AND &HF
+END IF
+END SUB
+
+FUNCTION NewResetDSP%
+FOR i% = &H210 TO &H280 STEP &H10
+OUT i% + &H6, 1
+OUT i% + &H6, 0
+Expect% = 0
+DO
+Expect% = Expect% + 1
+LOOP UNTIL (INP(i% + &HE) AND &H80 OR Expect% = 200)
+IF (Expect% <> 100 AND INP(i% + &HA) = &HAA) THEN Success% = -1: EXIT FOR
+NEXT
+IF Success% THEN
+DSPBase% = i%
+DSPReset% = i% + &H6
+DSPRead% = i% + &HA
+DSPWrite% = i% + &HC
+DSPWriteBuffer% = DSPWrite%
+DSPReadBuffer% = i% + &HE
+MixAddress% = i% + &H4
+MixData% = i% + &H5
+'Reset Mixer Too
+OUT MixAddress%, 0
+OUT MixData%, 0
+END IF
+NewResetDSP% = Success%
+END FUNCTION
+
+SUB OutputFilter (State%, Set%)
+OUT MixAddress%, &HE
+a% = INP(MixData%)
+IF Set% THEN
+a% = a% AND &HDF
+a% = a% OR State%
+OUT MixData%, a%
+ELSE
+State% = (a% AND &H20) \ &H20
+END IF
+END SUB
+
+SUB PauseDMAMode (DMAMode816%)
+IF DMAMode816% THEN
+WriteDSP &HD5
+OUT DMAMaskReg%, DMAUnMasked%
+Pause% = 0
+ELSE
+WriteDSP &HD0
+OUT DMAMaskReg%, DMAMasked%
+Pause% = 1
+END IF
+END SUB
+
+SUB ProcessInit (DMAMode%, DMAIncrement%, DMAInitialize%, DMATransfer%, MonoStereo%, Sampling&)
+SELECT CASE DMAChannel%
+CASE 0
+DMAPageReg% = &H87
+DMAAddressReg% = &H0
+DMACountReg% = &H1
+CASE 1
+DMAPageReg% = &H83
+DMAAddressReg% = &H2
+DMACountReg% = &H3
+CASE 2
+DMAPageReg% = &H81
+DMAAddressReg% = &H4
+DMACountReg% = &H5
+CASE 3
+DMAPageReg% = &H82
+DMAAddressReg% = &H6
+DMACountReg% = &H7
+CASE 4
+DMAPageReg% = &H8F
+DMAAddressReg% = &HC0
+DMACountReg% = &HC2
+CASE 5
+DMAPageReg% = &H8B
+DMAAddressReg% = &HC4
+DMACountReg% = &HC6
+CASE 6
+DMAPageReg% = &H89
+DMAAddressReg% = &HC8
+DMACountReg% = &HCA
+CASE 7
+DMAPageReg% = &H8A
+DMAAddressReg% = &HCC
+DMACountReg% = &HCE
+CASE ELSE
+END SELECT
+IF (DMAChannel% <= 3) THEN
+DMAMaskReg% = &HA
+DMAModeReg% = &HB
+DMAClearReg% = &HC
+DMAMasked% = &H4 + DMAChannel%
+DMAUnMasked% = DMAChannel%
+DMAModeData% = DMAMode% * &H40 + DMAIncrement% * &H20 + DMAInitialize% * &H10 + DMATransfer% * &H4 + DMAChannel%
+ELSE
+DMAMaskReg% = &HD4
+DMAModeReg% = &HD6
+DMAClearReg% = &HD8
+DMAMasked% = DMAChannel%
+DMAUnMasked% = DMAChannel% - &H4
+DMAModeData% = DMAMode% * &H40 + DMAIncrement% * &H20 + DMAInitialize% * &H10 + DMATransfer% * &H4 + DMAChannel% - 4
+END IF
+DSPTimeConstant% = (65536 - (256000000 / ((MonoStereo% + 1) * Sampling&))) \ 256
+END SUB
+
+FUNCTION ReadDSP%
+DO: LOOP UNTIL INP(DSPReadBuffer%) AND &H80
+ReadDSP% = INP(DSPRead%)
+END FUNCTION
+
+SUB ResetDSP
+OUT DSPReset%, 1
+OUT DSPReset%, 0
+DO: LOOP UNTIL (INP(DSPReadBuffer%)) AND &H80
+HeyHo% = INP(DSPRead%)
+END SUB
+
+SUB ResetMix
+OUT MixAddress%, 0
+OUT MixData%, 0
+END SUB
+
+SUB ResumeDMAMode (DMAMode816%)
+IF DMAMode816% THEN WriteDSP &HD6 ELSE WriteDSP &HD4
+END SUB
+
+SUB SpeakerState (State%, Set%)
+IF Set% THEN
+IF State% THEN WriteDSP &HD1 ELSE WriteDSP &HD3
+ELSE
+WriteDSP &HD8
+State% = ReadDSP%
+END IF
+END SUB
+
+SUB StartMenu
+FOR i% = 0 TO 255
+OUT &H3C8, i%
+OUT &H3C9, i% MOD 64
+OUT &H3C9, (i% * 2) MOD 64
+OUT &H3C9, (i% * 4) MOD 64
+NEXT
+DEF SEG = &HA000
+OPEN "B", #1, "media.3ds"
+SEEK #1, 7
+mem& = 0
+FOR i% = 0 TO 199
+k$ = INPUT$(320, #1)
+FOR j& = 0 TO 319
+POKE mem& + j&, ASC(MID$(k$, j& + 1, 1))
+NEXT
+mem& = mem& + 320
+NEXT
+CLOSE #1
+DEF SEG
+END SUB
+
+SUB StereoSwitch (MonoStereo%)
+OUT MixAddress%, &HE
+a1% = INP(MixData%)
+IF MonoStereo% THEN OUT MixData%, (a1% AND &HD) ELSE OUT MixData%, a1% OR 2
+END SUB
+
+SUB VoiceVol (left%, right%, Set%)
+OUT MixAddress%, &H4
+IF Set% THEN
+a% = left% * &H10 + right%
+OUT MixDtata%, a%
+ELSE
+a% = INP(MixData%)
+left% = a% \ &H10
+right% = a% AND &HF
+END IF
+END SUB
+
+SUB VolumeConv (Buffer%, Length&, Volume!)
+IF (Volume! <> 1) THEN
+Vol% = Volume! * 256
+IF (Buffer% = 1) THEN
+DEF SEG = VARSEG(WaveBuffer1(0))
+ELSE
+DEF SEG = VARSEG(WaveBuffer2(0))
+END IF
+FOR i& = 0 TO Length& - 1
+a& = ((CLNG(PEEK(i&) - 128) * Vol%) \ 256)
+IF (a& > 127) THEN a& = 127
+IF (a& < -128) THEN a& = -128
+a& = a& + 128
+POKE i&, a&
+NEXT
+DEF SEG
+END IF
+END SUB
+
+SUB WaveInfo
+PRINT #2, "Riff ID = "; WaveFile(0).RiffID
+PRINT #2, "Riff Size = "; WaveFile(0).RiffSize
+PRINT #2, "Wave ID = "; WaveFile(0).WaveID
+PRINT #2, "Format ID = "; WaveFile(0).FmtID
+PRINT #2, "Format Size = "; WaveFile(0).FmtSize
+PRINT #2, "Audio Format = "; WaveFile(0).AudioFmt
+PRINT #2, "Number of Channels = "; WaveFile(0).NumChannels
+PRINT #2, "Sampling Rate = "; WaveFile(0).SampleRate; "Hz"
+PRINT #2, "Bytes per second = "; WaveFile(0).ByteRate
+PRINT #2, "Block Align = "; WaveFile(0).BlockAlign
+PRINT #2, "(number of bytes per sample)"
+PRINT #2, "Bits per sample = "; WaveFile(0).BitsPerSample
+PRINT #2, "Data ID = "; WaveFile(0).DataID
+PRINT #2, "Data Size = "; WaveFile(0).DataSize
+END SUB
+
+SUB WriteDSP (what%)
+DO: LOOP WHILE INP(DSPWriteBuffer%) AND &H80
+OUT DSPWrite%, what%
+END SUB
+

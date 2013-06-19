@@ -1,0 +1,53 @@
+DECLARE FUNCTION nospc$ (a$)
+DECLARE FUNCTION reads% (a, b, fx)
+DECLARE SUB writes (a, b, fx, wr)
+DECLARE SUB zip (f1$, f2$)
+
+FUNCTION nospc$ (a$)
+FOR i = 1 TO LEN(a$)
+b$ = MID$(a$, i, 1)
+IF (b$ <> " ") THEN c$ = c$ + b$
+NEXT
+nospc$ = c$
+END FUNCTION
+
+FUNCTION reads% (a, b, fx)
+SEEK #fx, (a * 256 + b) * 2 + 1
+k$ = INPUT$(2, #fx)
+reads% = ASC(LEFT$(k$, 1)) * 256 + ASC(RIGHT$(k$, 1))
+END FUNCTION
+
+SUB writes (a, b, fx, wr)
+SEEK #fx, (a * 256 + b) * 2 + 1
+v1$ = nospc$(STR$(INT(wr / 256)))
+v2$ = nospc$(STR$(INT(wr MOD 256)))
+r$ = v1$ + v2$
+WRITE #fx, r$
+END SUB
+
+SUB zip (f1$, f2$)
+null$ = CHR$(0)
+z1 = FREEFILE
+OPEN "B", #z1, f1$
+z2 = FREEFILE
+OPEN "B", #z2, f2$
+z3 = FREEFILE
+OPEN "B", #z3, "ram1.mem"
+z4 = FREEFILE
+OPEN "B", #z4, "ram2.mem"
+length = LOF(z1)
+IF (length MOD 2 = 1) THEN length = length + 1
+'get quantities
+FOR i = 1 TO length
+t1 = ASC(INPUT$(1, #z1) + null$)
+t2 = ASC(INPUT$(1, #z1) + null$)
+ab = reads%(t1, t2, z3)
+ab = ab + 1
+writes t1, t2, z3, ab
+NEXT
+
+'perform selection sort on quantities
+
+
+END SUB
+

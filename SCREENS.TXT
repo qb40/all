@@ -1,0 +1,131 @@
+COMMON SHARED cscreen, screens, scxx1, scyy1, scxx2, scyy2
+DECLARE SUB setscreens (n AS INTEGER)
+DECLARE SUB area (x1, y1, x2, y2)
+DECLARE SUB setscr (s%)
+DECLARE SUB scrdot (x%, y%, c%)
+DECLARE SUB scrline (x1%, y1%, x2%, y2%, c%)
+DECLARE SUB scrgenerate ()
+DECLARE SUB scrend ()
+DECLARE FUNCTION nospc$ (s AS STRING)
+
+SUB area (x1, y1, x2, y2)
+SHARED screens, scxx1, scxx2, scyy1, scyy2
+scxx1 = x1: scxx2 = x2: scyy1 = y1: scyy2 = y2
+z = FREEFILE
+FOR i% = z + 1 TO z + screens
+OPEN "B", #i%, nospc$("scr" + STR$(i% - z) + ".scr")
+NEXT
+ps = 1
+as$ = CHR$(0)
+FOR i = x1 TO x2
+FOR j = y1 TO y2
+FOR i1% = z + 1 TO z + screens
+PUT #i1%, ps, as$
+NEXT
+ps = ps + 1
+NEXT
+NEXT
+
+FOR i% = z + 1 TO z + screens
+CLOSE #i%
+NEXT
+END SUB
+
+FUNCTION nospc$ (s AS STRING)
+add$ = ""
+FOR i% = 1 TO LEN(s$)
+z$ = MID$(s$, i%, 1)
+IF z$ <> " " THEN add$ = add$ + z$
+NEXT
+nospc$ = add$
+END FUNCTION
+
+SUB scrdot (x%, y%, c%)
+SHARED cscreen, scxx1, scxx2, scyy1, scyy2
+z = FREEFILE
+s$ = nospc$("scr" + STR$(cscreen) + ".scr")
+OPEN "B", #z, s$
+IF (x < 0 OR y < 0) THEN EXIT SUB
+ax = scxx1 + x%
+ay = scyy1 + y%
+IF (ax > scxx2 OR ay > scyy2) THEN EXIT SUB
+ps = ax * (scyy2 - scyy1 + 1) + ay + 1
+as$ = CHR$(c%)
+PUT #z, ps, as$
+CLOSE #z
+END SUB
+
+SUB scrend
+SHARED screens
+FOR i = 1 TO screens
+a$ = nospc$("scr" + STR$(i) + ".scr")
+SHELL "del " + a$
+NEXT
+END SUB
+
+SUB scrgenerate
+SHARED screens, scxx1, scyy1, scxx2, scyy2
+z = FREEFILE
+FOR i% = z + 1 TO z + screens
+OPEN "B", #i%, nospc$("scr" + STR$(i% - z) + ".scr")
+NEXT
+
+ps = 1
+FOR i = scxx1 TO scxx2
+FOR j = scyy1 TO scyy2
+cl = 0
+FOR i1 = z + screens TO z + 1 STEP -1
+SEEK #i1, ps
+a1$ = INPUT$(1, #i1)
+IF a1$ <> "" THEN cc = ASC(a1$)
+IF cc <> 0 THEN cl = cc
+NEXT
+LINE (i, j)-(i, j), cl
+ps = ps + 1
+NEXT
+NEXT
+
+FOR i% = z + 1 TO z + screens
+CLOSE #i%
+NEXT
+END SUB
+
+SUB scrline (x1%, y1%, x2%, y2%, c%)
+SHARED cscreen, scxx1, scxx2, scyy1, scyy2
+z = FREEFILE
+s$ = nospc$("scr" + STR$(cscreen) + ".scr")
+
+OPEN "B", #z, s$
+IF (x1% < 0 OR y1% < 0 OR x2% < 0 OR y2% < 0) THEN EXIT SUB
+
+xx = ABS(x2% - x1%)
+yy = ABS(y2% - y1%)
+FOR iz = 1 TO xx
+rty = FIX((iz * yy) / xx)
+ax = scxx1 + x1% + iz
+ay = scyy1 + y1% + rty
+IF (ax <= scxx2 OR ay <= scyy2) THEN
+ps = ax * (scyy2 - scyy1 + 1) + ay + 1
+as$ = CHR$(c%)
+PUT #z, ps, as$
+END IF
+NEXT
+CLOSE #z
+END SUB
+
+SUB setscr (s%)
+SHARED screens, cscreen
+IF s% > 0 AND s% <= screens THEN cscreen = s%
+END SUB
+
+SUB setscreens (n AS INTEGER)
+SHARED screens
+screens = n
+FOR i% = 1 TO n
+s$ = nospc$("scr" + STR$(i%) + ".scr")
+z = FREEFILE
+OPEN "O", #z, s$
+CLOSE #z
+NEXT
+END SUB
+

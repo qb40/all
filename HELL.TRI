@@ -1,0 +1,91 @@
+DECLARE FUNCTION c.reverse$ (s$)
+DECLARE SUB obj.draw (x%, y%, s$, sz%, dir%)
+'ศวฦลฤรยมภฟพฝผปบนธถตดณฒฑฐษสหฬอฮฯะัาำิีึืฺุูÛÜÝÞ฿
+CONST backspc = 8, enter = 13, htab = 9, esc = 27
+CONST left = 75, right = 77, up = 72, down = 80
+CONST uplt = 71, uprt = 73, dnlt = 79, dnrt = 81
+CONST insert = 82, home = 73, pageup = 71, del = 83, endk = 81, pagedn = 79
+CONST kf1 = 59, kf2 = 60, kf3 = 61, kf4 = 62, kf5 = 63, kf6 = 64, kf7 = 65, kf8 = 66, kf9 = 67, kf10 = 68, kf11 = 133, kf12 = 134
+
+
+'Logo
+label3:
+CLS
+COLOR 9, 0
+PRINT "                 ษอออออออออออออออออออออออออออออออออออป"
+PRINT "                 บ ";
+COLOR 10, 1
+PRINT "HELL BENDER : The Rampage Vehicle";
+COLOR 9, 0
+PRINT " บ"
+PRINT "                 ศอออออออออออออออออออออออออออออออออออผ"
+
+GOSUB label2
+
+DO UNTIL k$ = CHR$(enter)
+k$ = ""
+    WHILE k$ = ""
+    k$ = INKEY$
+    WEND
+SELECT CASE k$
+    CASE CHR$(0) + CHR$(up)
+    menu% = menu% - 1
+    IF (menu% < 0) THEN menu% = 2
+    GOSUB label2
+    CASE CHR$(0) + CHR$(down)
+    menu% = menu% + 1
+    IF (menu% > 2) THEN menu% = 0
+    GOSUB label2
+CASE ELSE
+END SELECT
+LOOP
+GOTO label1
+label2:
+LOCATE 15, 30
+IF (menu% = 0) THEN COLOR 13 ELSE COLOR 12
+PRINT "Start Game"
+LOCATE , 30
+IF (menu% = 1) THEN COLOR 13 ELSE COLOR 12
+PRINT " Credits"
+LOCATE , 30
+IF (menu% = 2) THEN COLOR 13 ELSE COLOR 12
+PRINT "  Exit"
+RETURN
+label1:
+IF (menu% = 2) THEN SYSTEM
+IF (menu% = 1) THEN
+    CLS
+    PRINT "D €rts : Subhajit Sahu"
+    k$ = INPUT$(1)
+    GOTO label3
+END IF
+CLS
+
+'Define Vehicles
+DIM Vehicles(5)  AS STRING
+Vehicles(0) =
+'ศวฦลฤรยมภฟพฝผปบนธถตดณฒฑฐษสหฬอฮฯะัาำิีึืฺุูÛÜÝÞ฿
+'   ฺฟ
+' ษอุุอป
+'ฑบ ฒฒ บฑ
+' ศออออผ
+
+'ษสป    ีอป
+'ศฯผ    ิอผ
+
+FUNCTION c.reverse$ (s$)
+FOR i% = LEN(s$) TO 1 STEP -1
+a1$ = a1$ + MID$(s$, i%, 1)
+NEXT
+c.reverse$ = a1$
+END FUNCTION
+
+SUB obj.draw (x%, y%, s$, sz%)
+e% = LEN(s$) \ sz% - 1
+LOCATE x%, y%
+    FOR i% = 0 TO e%
+    LOCATE x%
+    PRINT MID$(s$, i% * sz% + 1, sz%)
+    NEXT
+END SUB
+

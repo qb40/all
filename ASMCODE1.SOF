@@ -1,0 +1,697 @@
+'»«∆≈ƒ√¬¡¿øæΩºª∫π∏∂µ¥≥≤±∞… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ
+COMMON SHARED Command1$
+DECLARE FUNCTION a.chopoff$ (s$, a%)
+DECLARE SUB a.makejump (a1$, a2$)
+DECLARE SUB a.next (a1%)
+DECLARE SUB a.nextstack (a1%)
+DECLARE FUNCTION c.long& (a1%)
+DECLARE FUNCTION c.int% (a1&)
+DECLARE FUNCTION c.reverse$ (s$)
+DECLARE FUNCTION c.zero$ (s$)
+DECLARE FUNCTION asm.peekwordi% (mem1&, mem2&)
+DECLARE SUB asm.pokewordi (a1%, mem1&, mem2&)
+DECLARE SUB in.stack ()
+DECLARE SUB in.stack2 ()
+DECLARE SUB in.reg ()
+DECLARE SUB in.flag ()
+DECLARE SUB in.instruction ()
+DECLARE SUB in.execute ()
+DECLARE SUB asm.loadprog (fl1$, s$)
+DECLARE FUNCTION screen.word$ (s$, no%, s1$, s2$)
+DECLARE SUB c.print (s1$)
+DECLARE FUNCTION a.count% (fl1$, s1$)
+DECLARE FUNCTION c.nospc$ (s$)
+DECLARE FUNCTION c.stringword$ (s$, ps%)
+DECLARE FUNCTION c.removetab$ (k1$)
+DECLARE FUNCTION replace$ (s$, r1$, r2$) 'string,string to change,string to replace
+DECLARE SUB c.delay (seconds!)
+DIM CONST.separators AS STRING
+CONST.separators = " ,;"
+
+'Error Call
+ON ERROR GOTO errors
+
+'Define my Stack Array
+DIM Stack%(500)
+Stack.off& = c.long&(VARPTR(Stack%(499)))
+Stack.seg& = c.long&(VARSEG(Stack%(499)))
+DIM Registers%(14), Temp%(14), Blank%(4)
+
+'1 Get the command
+'par1,par2,... SEG , OFF
+'Push all parameters
+cmd$ = Command1$
+IF (cmd$ = "") THEN cmd$ = COMMAND$
+a1% = a.count%(cmd$, ",") + 1
+Registers%(12) = c.int%(CLNG(VAL(screen.word$(cmd$, a1%, p1$, p2$))))
+Registers%(11) = c.int%(CLNG(VAL(screen.word$(cmd$, a1% - 1, p1$, p2$))))
+Registers%(10) = c.int%(Stack.seg&)
+Registers%(4) = c.int%(Stack.off&)
+Registers%(5) = Registers%(4)
+Stack%(499) = CINT(seg1&)
+Stack%(498) = CINT(off1&)
+a1% = a1% - 2
+IF (a1% <= 0) THEN GOTO StopErrors1
+FOR i% = 1 TO a1%
+Stack%(498 - i%) = VAL(screen.word$(cmd$, i%, p1$, p2$))
+NEXT
+StopErrors1:
+
+'2 Store Array Address
+FOR i% = 0 TO 3
+Blank%(i%) = asm.peekwordi(&H102, i% * 2)
+NEXT
+b1% = VARSEG(Temp%(0))
+b2% = VARPTR(Temp%(0))
+asm.pokewordi b1%, &H102, 0
+asm.pokewordi b2%, &H102, 2
+b1% = VARSEG(Registers%(0))
+b2% = VARPTR(Registers%(0))
+asm.pokewordi b1%, &H102, 4
+asm.pokewordi b2%, &H102, 6
+
+'Get The Executor Program
+asm.loadprog "push2.dll", Push$
+
+'3 Generate String For Making Far Calls
+c1& = SADD(Push$)
+Calls$ = CHR$(&H9A) + CHR$(c1& AND &HFF) + CHR$(c1& \ &H100)
+c1& = VARSEG(Push$)
+Calls$ = Calls$ + CHR$(c1& AND &HFF) + CHR$(c1& \ &H100)
+c1& = SADD(Push$) + 199
+Calls$ = Calls$ + CHR$(&H9A) + CHR$(c1& AND &HFF) + CHR$(c1& \ &H100)
+c1& = VARSEG(Push$)
+Calls$ = Calls$ + CHR$(c1& AND &HFF) + CHR$(c1& \ &H100) + CHR$(&HCB)
+
+'Run The Program
+DO
+CLS
+in.flag
+in.reg
+in.stack
+in.stack2
+in.instruction
+k$ = INPUT$(1)
+ in.execute
+b1% = CINT(((Stack.seg& * &H10 + Stack.off&) - (c.long&(Registers%(10)) * &H10 + c.long&(Registers%(4)))) \ 2)
+IF (b1% = 0) THEN SYSTEM
+LOOP
+errors:
+COLOR 9
+c.print "Internal Error"
+RESUME NEXT
+
+FUNCTION a.chopoff$ (s$, a%)
+FOR i% = 1 TO LEN(s$)
+IF (i% > a%) THEN b$ = b$ + MID$(s$, i%, 1)
+NEXT
+a.chopoff$ = b$
+END FUNCTION
+
+FUNCTION a.count% (fl1$, s1$)
+'Count
+lens% = LEN(s1$)
+FOR i% = 1 TO LEN(fl1$)
+a1$ = MID$(fl1$, i%, lens%)
+IF (a1$ = s1$) THEN a1% = a1% + 1
+NEXT
+a.count% = a1%
+END FUNCTION
+
+SUB a.makejump (a1$, a2$)
+SHARED Registers%(), Stack%(), Stack.seg&, Stack.off&
+a$ = LCASE$(screen.word$(a1$, 1, p1$, p2$))
+cf% = c.long&(Registers%(13)) AND 1
+zf% = (c.long&(Registers%(13)) AND &H40) \ &H40
+sf% = (c.long&(Registers%(13)) AND &H80) \ &H80
+pf% = (c.long&(Registers%(13)) AND &H4) \ &H4
+of% = (c.long&(Registers%(13)) AND &H400) \ &H400
+IF (a2$ <> "") THEN a1% = ASC(a2$) ELSE a1% = 0
+IF (a1% > 127) THEN a1% = -256 + a1%
+a3$ = ""
+SELECT CASE a1$
+    CASE "jg"
+    IF (zf% = 0 AND sf% = 0) THEN a.next a1%
+    CASE "jl"
+    IF (sf% = 1) THEN a.next a1%
+    CASE "jge"
+    IF (sf% = 0) THEN a.next a1%
+    CASE "jle"
+    IF (zf% = 1 OR sf% = 1) THEN a.next a1%
+    CASE "ja"
+    IF (zf% = 0 AND cf% = 0) THEN a.next a1%
+    CASE "jae"
+    IF (cf% = 0) THEN a.next a1%
+    CASE "jb"
+    IF (cf% = 1) THEN a.next a1%
+    CASE "jbe"
+    IF (zf% = 1 OR cf% = 1) THEN a.next a1%
+    CASE "jc"
+    IF (cf% = 1) THEN a.next a1%
+    CASE "jz"
+    IF (zf% = 1) THEN a.next a1%
+    CASE "jnz"
+    IF (zf% = 0) THEN a.next a1%
+    CASE "jno"
+    IF (of% = 0) THEN a.next a1%
+    CASE "jns"
+    IF (sf% = 0) THEN a.next a1%
+    CASE "jpo"
+    IF (pf% = 0) THEN a.next a1%
+    CASE "jo"
+    IF (of% = 1) THEN a.next a1%
+    CASE "jpe"
+    IF (pf% = 1) THEN a.next a1%
+    CASE "js"
+    IF (sf% = 1) THEN a.next a1%
+    CASE "jcxz"
+    IF (Registers%(2) = 0) THEN a.next a1%
+    CASE "jmp"
+    IF (LEN(a2$) = 1) THEN
+    a.next a1%
+    ELSE
+    b1& = ASC(LEFT$(a2$, 1)) + ASC(RIGHT$(a2$, 1)) * &H100
+    IF (b1& > 32767) THEN b1& = -65536 + b1&
+    a.next CINT(b1&)
+    END IF
+    CASE "loop"
+    Registers%(2) = c.int%(c.long&(Registers%(2)) - 1)
+    IF (Registers%(2) <> 0) THEN a.next a1%
+    CASE "loopz"
+    Registers%(2) = c.int%(c.long&(Registers%(2)) - 1)
+    IF (Registers%(2) <> 0 AND zf% = 1) THEN a.next a1%
+    CASE "loopnz"
+    Registers%(2) = c.int%(c.long&(Registers%(2)) - 1)
+    IF (Registers%(2) <> 0 AND zf% = 0) THEN a.next a1%
+    CASE "call"
+    b1% = 499 - CINT(((Stack.seg& * &H10 + Stack.off&) - (c.long&(Registers%(10)) * &H10 + c.long&(Registers%(4)))) \ 2)
+    IF (LEN(a2$) = 2) THEN
+    Stack%(b1%) = Registers%(12)
+    a.nextstack -2
+    b1& = ASC(LEFT$(a2$, 1)) + ASC(RIGHT$(a2$, 1)) * &H100
+    IF (b1& > 32767) THEN b1& = -65536 + b1&
+    a.next CINT(b1&)
+    ELSE
+    Stack%(b1%) = Registers%(11)
+    Stack%(b1% - 1) = Registers%(12)
+    a.nextstack -4
+    Registers%(12) = c.int%(ASC(LEFT$(a2$, 1)) + ASC(MID$(a2$, 2, 1)) * &H100)
+    Registers%(11) = c.int%(ASC(MID$(a2$, 3, 1)) + ASC(RIGHT$(a2$, 1)) * &H100)
+    END IF
+    CASE "ret"
+    b1% = 499 - CINT(((Stack.seg& * &H10 + Stack.off&) - (c.long&(Registers%(10)) * &H10 + c.long&(Registers%(4)))) \ 2)
+    Registers%(12) = Stack%(b1%)
+    a.nextstack 2
+    IF (LEN(a2$) > 0) THEN a.nextstack CINT(ASC(LEFT$(a2$, 1)) + ASC(RIGHT$(a2$, 1)) * &H100)
+    CASE "retf"
+    b1% = 499 - CINT(((Stack.seg& * &H10 + Stack.off&) - (c.long&(Registers%(10)) * &H10 + c.long&(Registers%(4)))) \ 2)
+    Registers%(12) = Stack%(b1%)
+    Registers%(11) = Stack%(b1% + 1)
+    a.nextstack 4
+    IF (LEN(a2$) > 0) THEN a.nextstack CINT(ASC(LEFT$(a2$, 1)) + ASC(RIGHT$(a2$, 1)) * &H100)
+CASE ELSE
+a3$ = a1$
+END SELECT
+a1$ = a3$
+END SUB
+
+SUB a.next (a1%)
+SHARED Registers%()
+a1& = c.long&(Registers%(12))
+a1& = a1& + CLNG(a1%)
+IF (a1& > 65535) THEN
+a1& = a1& MOD 65536
+Registers%(11) = c.int%(c.long&(Registers%(11)) + &H1000)
+ELSEIF (a1& < 0) THEN
+a1& = 65536 + a1&
+Registers%(11) = c.int%(c.long&(Registers%(11)) - &H1000)
+END IF
+Registers%(12) = c.int%(a1&)
+END SUB
+
+SUB a.nextstack (a1%)
+SHARED Registers%()
+a1& = c.long&(Registers%(4))
+a1& = a1& + CLNG(a1%)
+IF (a1& > 65535) THEN
+a1& = a1& MOD 65536
+Registers%(10) = c.int%(c.long&(Registers%(10)) + &H1000)
+ELSEIF (a1& < 0) THEN
+a1& = 65536 + a1&
+Registers%(10) = c.int%(c.long&(Registers%(10)) - &H1000)
+END IF
+Registers%(4) = c.int%(a1&)
+END SUB
+
+SUB asm.loadprog (fl1$, s$)
+fr% = FREEFILE
+OPEN "B", fr%, fl1$
+FOR i& = 1 TO LOF(1)
+s$ = s$ + INPUT$(1, #fr%)
+NEXT
+CLOSE #fr%
+END SUB
+
+FUNCTION asm.peekwordi% (mem1&, mem2&)
+a1& = 0
+DEF SEG = mem1&
+a1& = PEEK(mem2&)
+a1& = a1& + CLNG(PEEK(mem2& + 1)) * &H100
+DEF SEG
+a1% = c.int%(a1&)
+asm.peekwordi% = a1%
+END FUNCTION
+
+SUB asm.pokewordi (a1%, mem1&, mem2&)
+a1$ = MKI$(a1%)
+DEF SEG = mem1&
+POKE mem2&, ASC(LEFT$(a1$, 1))
+POKE mem2& + 1, ASC(RIGHT$(a1$, 1))
+DEF SEG
+END SUB
+
+SUB c.delay (seconds!)
+times& = 80000 * seconds!
+val1% = INP(&H61)       'connect speaker to timer2
+val1% = val1% OR 3
+OUT &H61, val1%
+FOR i% = 1000 TO 6000 STEP 100
+freq% = i%
+GOSUB delay2
+freq% = 6200 - i%
+GOSUB delay2
+FOR j& = 1 TO times&
+NEXT
+NEXT
+'disconnect speaker from timer2
+val1% = INP(&H61)
+val1% = val1% AND 252
+OUT &H61, val1%
+GOTO delay1
+delay2:
+countdown& = 1193180 \ freq%  'calculate countdown
+low& = countdown& MOD 256'send the lowbyte and highbyte of new countdown value
+high& = countdown& \ 256
+OUT &H43, &HB6    'tell timer2 that we are about to load a new countdown value
+OUT &H42, low&
+OUT &H42, high&
+RETURN
+delay1:
+END SUB
+
+FUNCTION c.int% (a1&)
+a& = a1&
+IF (a& > 32767) THEN a& = -65536 + a&
+a% = CINT(a&)
+c.int% = a%
+END FUNCTION
+
+FUNCTION c.long& (a1%)
+a& = CLNG(a1%)
+IF (a& < 0) THEN a& = 65536 + a&
+c.long& = a&
+END FUNCTION
+
+FUNCTION c.nospc$ (s$)
+FOR i% = 1 TO LEN(s$)
+a1$ = MID$(s$, i%, 1)
+IF (a1$ <> " " AND a1$ <> CHR$(9) AND a1$ <> CHR$(0)) THEN a2$ = a2$ + a1$
+NEXT
+c.nospc$ = a2$
+END FUNCTION
+
+SUB c.print (s1$)
+FOR i% = 1 TO LEN(s1$)
+PRINT MID$(s1$, i%, 1);
+c.delay .018
+NEXT
+PRINT
+END SUB
+
+FUNCTION c.removetab$ (k1$)
+b$ = ""
+FOR i% = 1 TO LEN(k1$)
+a$ = MID$(k1$, i%, 1)
+IF (a$ = CHR$(9)) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 0) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 1) THEN
+ELSE
+b$ = b$ + a$
+spa% = 0
+END IF
+NEXT
+b$ = LTRIM$(RTRIM$(b$))
+c.removetab$ = b$
+END FUNCTION
+
+FUNCTION c.reverse$ (s$)
+FOR i% = LEN(s$) TO 1 STEP -1
+a1$ = a1$ + MID$(s$, i%, 1)
+NEXT
+c.reverse$ = a1$
+END FUNCTION
+
+FUNCTION c.stringword$ (s$, ps%)
+SHARED CONST.separators AS STRING
+
+b$ = ""
+i% = ps%
+sep% = 1
+char% = 0
+'Recieve all separators first
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% <> 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve the next characters till a separator
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve back code
+
+i% = ps% - 1
+IF (i% < 1) THEN GOTO c.stringword1
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = a1$ + b$ ELSE EXIT DO
+    i% = i% - 1
+    IF (i% < 1) THEN EXIT DO
+LOOP
+c.stringword1:
+c.stringword$ = b$
+END FUNCTION
+
+FUNCTION c.zero$ (s$)
+s1$ = s$
+IF (LEN(s1$) < 4) THEN s1$ = STRING$(4 - LEN(s1$), "0") + s1$
+c.zero$ = s1$
+END FUNCTION
+
+SUB in.execute
+SHARED Push$, Registers%(), Stack%(), Temp%(), Calls$, ins$
+'Show The User
+LOCATE 11, 50
+COLOR 7, 0
+PRINT "==========>";
+c.print "  CPU  "
+
+'Get The Instruction
+'Ins$ = SPACE$(200)
+'DEF SEG = VARSEG(Ins$)
+'CALL absolute(BYVAL Registers%(11), BYVAL Registers%(12), BYVAL VARSEG(Ins$), BYVAL SADD(Ins$), SADD(Push$) + 397)
+'DEF SEG
+fr% = FREEFILE
+OPEN "O", #fr%, "zzzzzzzz.ini"
+CLOSE #fr%
+OPEN "B", #fr%, "zzzzzzzz.ini"
+PUT #fr%, 1, ins$
+CLOSE #fr%
+OPEN "O", #fr%, "zzzzzzzy.ini"
+PRINT #fr%, "u 100"
+PRINT #fr%, "q"
+CLOSE #fr%
+SHELL "debug zzzzzzzz.ini <zzzzzzzy.ini >zzzzzzzx.ini"
+KILL "zzzzzzzz.ini"
+KILL "zzzzzzzy.ini"
+OPEN "I", #fr%, "zzzzzzzx.ini"
+LINE INPUT #fr%, a1$
+LINE INPUT #fr%, a1$
+a1% = 0
+a2% = 0
+DO UNTIL a1% = 1 OR EOF(fr%)
+LINE INPUT #fr%, a1$
+LINE INPUT #fr%, a2$
+IF (LEN(a1$) > 10) THEN
+   a2% = VAL("&H" + MID$(a2$, 6, 4)) - &H100
+   a1$ = c.removetab$(RIGHT$(a1$, LEN(a1$) - 24))
+   a2$ = LCASE$(screen.word$(a1$, 1, p1$, p2$))
+   IF (RIGHT$(a2$, 1) <> ":" OR LEFT$(a2$, 3) <> "rep" OR LEFT$(a2$, 4) <> "lock") THEN a1% = 1
+END IF
+LOOP
+a.next a2%
+a.makejump a1$, MID$(ins$, 3, a2% - 1)
+CLOSE #fr%
+KILL "zzzzzzzx.ini"
+IF (a1$ = "") THEN GOTO execute1
+'Ins$ = LEFT$(Calls$, 5) + LEFT$(Ins$, a2%) + RIGHT$(Calls$, LEN(Calls$) - 5)
+ins$ = LEFT$(Push$, 188) + LEFT$(ins$, a2%) + MID$(ins$, 189, 190)
+DEF SEG = VARSEG(ins$)
+CALL absolute(SADD(ins$))
+DEF SEG
+execute1:
+LOCATE 11, 50
+PRINT "<==========       ";
+END SUB
+
+SUB in.flag
+'»«∆≈ƒ√¬¡¿øæΩºª∫π∏∂µ¥≥≤±∞… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ
+SHARED Registers%()
+LOCATE 1, 30
+COLOR 6, 4
+PRINT "…FlagÕª"
+COLOR 6, 0
+a2% = Registers%(13)
+FOR i% = 1 TO 16
+a3% = a2% MOD 2
+a2% = a2% \ 2
+SELECT CASE i%
+    CASE 1
+    a2$ = "CF"
+    CASE 3
+    a2$ = "PF"
+    CASE 5
+    a2$ = "AF"
+    CASE 7
+    a2$ = "ZF"
+    CASE 8
+    a2$ = "SF"
+    CASE ELSE
+    a2$ = "??"
+END SELECT
+a3$ = "∫" + a2$ + ":" + STR$(a3%) + "∫"
+LOCATE , 30
+PRINT a3$
+NEXT
+LOCATE , 30
+PRINT "»ÕÕÕÕÕº"
+END SUB
+
+SUB in.instruction
+SHARED Push$, Registers%(), ins$
+'k$ = INPUT$(1)
+DEF SEG = VARSEG(Push$)
+LOCATE 1
+COLOR 15, 6
+PRINT "-Instructions-"
+COLOR 7, 0
+ins$ = ""
+b3& = c.long&(Registers%(11))
+DEF SEG = b3&
+b1& = c.long&(Registers%(12))
+b2& = b1& + 119
+FOR i& = b1& TO b2&
+z& = i&
+IF (i& > 65536) THEN
+    b3& = b3& + &H1000
+    DEF SEG = b3&
+    z& = i& - 65536
+    END IF
+ins$ = ins$ + CHR$(PEEK(z&))
+NEXT
+DEF SEG
+fr% = FREEFILE
+OPEN "O", #fr%, "zzzzzzzz.ini"
+CLOSE #fr%
+OPEN "B", #fr%, "zzzzzzzz.ini"
+PUT #fr%, 1, ins$
+CLOSE #fr%
+OPEN "O", #fr%, "zzzzzzzy.ini"
+PRINT #fr%, "u 100 150"
+PRINT #fr%, "q"
+CLOSE #fr%
+SHELL "debug zzzzzzzz.ini <zzzzzzzy.ini >zzzzzzzx.ini"
+KILL "zzzzzzzz.ini"
+KILL "zzzzzzzy.ini"
+OPEN "I", #fr%, "zzzzzzzx.ini"
+LINE INPUT #fr%, a1$
+DO UNTIL EOF(fr%)
+LINE INPUT #fr%, a1$
+IF (lala% = 1) THEN COLOR 10 ELSE COLOR 7
+lala% = lala% + 1
+IF (LEN(a1$) > 10) THEN PRINT RTRIM$(a.chopoff$(a1$, 24))
+IF (CSRLIN > 22) THEN EXIT DO
+LOOP
+CLOSE #fr%
+KILL "zzzzzzzx.ini"
+COLOR 15, 6
+PRINT "---------------"
+COLOR 7
+END SUB
+
+SUB in.reg
+'»«∆≈ƒ√¬¡¿øæΩºª∫π∏∂µ¥≥≤±∞… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ
+SHARED seg1&, off1&, Registers%()
+LOCATE 1, 37
+COLOR 9, 4
+PRINT "…Registerª"
+COLOR 9, 0
+a1% = SADD(Push$) + x
+DEF SEG = VARSEG(Push$)
+FOR i% = 0 TO 13    '13=Flags
+SELECT CASE i%
+    CASE 0
+    a2$ = "AX"
+    CASE 1
+    a2$ = "BX"
+    CASE 2
+    a2$ = "CX"
+    CASE 3
+    a2$ = "DX"
+    CASE 4
+    a2$ = "SP"
+    CASE 5
+    a2$ = "BP"
+    CASE 6
+    a2$ = "SI"
+    CASE 7
+    a2$ = "DI"
+    CASE 8
+    a2$ = "DS"
+    CASE 9
+    a2$ = "ES"
+    CASE 10
+    a2$ = "SS"
+    CASE 11
+    a2$ = "CS"
+    CASE 12
+    a2$ = "IP"
+    CASE 13
+    a2$ = "FL"
+    CASE ELSE
+END SELECT
+a1$ = HEX$(Registers%(i%))
+a1$ = STRING$(4 - LEN(a1$), "0") + a1$
+a1$ = "∫" + a2$ + "=" + a1$ + " ∫"
+LOCATE , 37
+PRINT a1$
+NEXT
+LOCATE , 37
+PRINT "»"; STRING$(8, "Õ"); "º"
+END SUB
+
+SUB in.stack
+'»«∆≈ƒ√¬¡¿øæΩºª∫π∏∂µ¥≥≤±∞… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ
+SHARED Stack%(), Registers%(), Stack.seg&, Stack.off&
+LOCATE 1, 64
+COLOR 10, 4
+PRINT "…Stack(SP)ÕÕÕÕÕÕª"
+COLOR 10, 0
+a2% = 499 - CINT(((Stack.seg& * &H10 + Stack.off&) - (c.long&(Registers%(10)) * &H10 + c.long&(Registers%(4)))) \ 2)
+a1% = a2% + 9
+IF (a1% > 499) THEN a1% = 499
+FOR i% = a1% TO a2% STEP -1
+LOCATE , 64
+PRINT "∫"; c.zero$(HEX$(Registers%(10))); ":"; c.zero$(HEX$(Registers%(4) + i& * 2)); "> "; c.zero$(HEX$(Stack%(i%))); "∫"
+NEXT
+LOCATE , 64
+PRINT "»"; STRING$(15, "Õ"); "º"
+END SUB
+
+SUB in.stack2
+'»«∆≈ƒ√¬¡¿øæΩºª∫π∏∂µ¥≥≤±∞… ÀÃÕŒœ–—“”‘’÷◊ÿŸ⁄€‹›ﬁﬂ
+SHARED Stack%(), Registers%(), Stack.seg&, Stack.off&
+LOCATE 1, 47
+COLOR 10, 4
+PRINT "…Stack(BP)ÕÕÕÕÕÕª"
+COLOR 10, 0
+a2% = 499 - CINT((Stack.seg& * &H10 + Stack.off& - c.long&(Registers%(10)) * &H10 + c.long&(Registers%(5))) \ 2)
+a1% = a2% + 9
+IF (a1% > 499) THEN a1% = 499
+IF (a2% < 0) THEN a2% = 0
+FOR i% = a1% TO a2% STEP -1
+LOCATE , 47
+PRINT "∫"; c.zero$(HEX$(Registers%(10))); ":"; c.zero$(HEX$(Registers%(5) + i& * 2)); "> "; c.zero$(HEX$(Stack%(i%))); "∫"
+NEXT
+LOCATE , 47
+PRINT "»"; STRING$(15, "Õ"); "º"
+END SUB
+
+FUNCTION replace$ (s$, r1$, r2$) 'string,string to change,string to replace
+l% = LEN(s$) - LEN(r1$) + 1   ' 6(12-7+1)
+s% = LEN(r1$)
+b$ = ""
+i% = 1
+DO UNTIL (i% > l%)
+k$ = MID$(s$, i%, s%)
+IF (k$ = r1$) THEN
+b$ = b$ + r2$
+i% = i% + s%
+ELSE
+b$ = b$ + LEFT$(k$, 1)
+i% = i% + 1
+END IF
+LOOP
+IF (i% < LEN(s$)) THEN z$ = RIGHT$(s$, LEN(s$) - i% - 1) ELSE z$ = ""
+replace$ = b$ + z$
+END FUNCTION
+
+FUNCTION screen.word$ (s$, no%, s1$, s2$)
+SHARED CONST.separators AS STRING
+s1$ = ""
+s2$ = ""
+ss$ = c.removetab$(s$) + " "
+w1% = 0
+st% = 1
+leng% = LEN(ss$)
+FOR i% = 1 TO LEN(ss$)
+a$ = MID$(ss$, i%, 1)
+    'check if end of word
+    IF (INSTR(CONST.separators, a$)) THEN a1% = 1 ELSE a1% = 0
+    IF (INSTR(CONST.separators, MID$(ss$, st%, 1))) THEN
+    a1% = 0
+    st% = st% + 1
+    END IF
+ 
+IF (a1% = 1) THEN
+w1% = w1% + 1
+        'report for word
+        IF (w1% = no%) THEN
+        st$ = MID$(ss$, st%, i% - st%)
+        IF (st$ = "") THEN
+            no% = no% + 1
+            st% = st% + 1
+        END IF
+        IF (w1% <> 1) THEN
+            a1% = 1
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, st% - a1%, 1)) AND (st% - a1% > 0))
+            s1$ = s1$ + MID$(ss$, st% - a1%, 1)
+            a1% = a1% + 1
+            LOOP
+            s1$ = c.reverse$(s1$)
+        ELSE
+        IF (st% > 1) THEN s1$ = LEFT$(ss$, st% - 1) ELSE s1$ = ""
+        END IF
+            a1% = 0
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, i% + a1%, 1)) AND (i% + a1% <= leng%))
+            s2$ = s2$ + MID$(ss$, i% + a1%, 1)
+            a1% = a1% + 1
+            LOOP
+        IF (w1% = no%) THEN EXIT FOR
+        ELSE
+        st% = i% + 1
+        END IF
+END IF
+NEXT
+screen.word$ = st$
+END FUNCTION
+

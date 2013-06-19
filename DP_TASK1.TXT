@@ -1,0 +1,240 @@
+'|||||||||||||||||||||CFG|||||||||||||||||||||||
+'$STATIC
+CLS
+DIM reads%(255), colour%(255)
+
+INPUT "256-colour Bitamp file name"; bmp$
+INPUT "x-resolution"; xres%
+INPUT "y-resolution"; yres%
+fl1$ = bmp$ + ".bmp"
+fl2$ = bmp$ + ".cfg"
+
+OPEN "B", #1, fl1$
+length& = LOF(1)
+datap& = length& - (xres% * yres%) + 1
+datas& = datap&
+datae& = length&
+colours& = datap& - 256
+coloure& = datap& - 1
+PRINT "Summary of " + bmp$
+PRINT "===================="
+PRINT ""
+PRINT "Length :"; length&
+PRINT "Data Start :"; datas&
+PRINT "Data end :"; datae&
+PRINT "Palette read start :"; colours&
+PRINT "Palette read end :"; coloure&
+PRINT ""
+PRINT "W = Data   shift (-)                   S = Data   shift (+)"
+PRINT "A = Colour shift (-)                   D = Colour shift (+)"
+PRINT "P = Control Palette manually"
+PRINT "(In palette : A = Colour select (-)    D = Colour select (+) )"
+PRINT "(In palette : S = Choose colour )"
+PRINT "(In palette : A = Colour put (-)       D = Colour put (+) )"
+PRINT "(In palette : S = Set colour palette )"
+PRINT "Enter = Save"
+PRINT ""
+PRINT "Press a key.";
+k$ = INPUT$(1)
+SCREEN 13
+
+GOSUB reading
+GOSUB colours
+GOSUB display
+
+k$ = ""
+DO UNTIL (k$ = CHR$(13))
+k$ = ""
+        WHILE (k$ = "")
+        k$ = INKEY$
+        WEND
+        k$ = UCASE$(k$)
+SELECT CASE k$
+
+CASE "W"
+        datas& = datas& - 1
+        datae& = datae& - 1
+        IF (datas& < 1) THEN
+                datas& = 1
+                datae& = datae& + 1
+                END IF
+        GOSUB reading
+        GOSUB display
+CASE "S"
+        datas& = datas& + 1
+        datae& = datae& + 1
+        IF (datas& > datap&) THEN
+                datas& = datas& - 1
+                datae& = datae& - 1
+                END IF
+        GOSUB reading
+        GOSUB display
+CASE "A"
+        colours& = colours& - 1
+        coloure& = coloure& - 1
+        IF (colours& < 1) THEN
+                colours& = 1
+                coloure& = coloure& + 1
+                END IF
+        GOSUB colours
+        GOSUB display
+CASE "D"
+        colours& = colours& + 1
+        coloure& = coloure& + 1
+        IF (coloure& > length&) THEN
+                colours& = colours& - 1
+                coloure& = length&
+                END IF
+        GOSUB colours
+        GOSUB display
+CASE "P"
+        col1% = 0
+        LOCATE 1, 1
+        IF (reads%(col1%) <> 0) THEN COLOR 10
+        PRINT "Select colour :"; col1%; " Rate :"; reads%(col1%); "  ";
+        COLOR 7
+        k$ = ""
+        DO UNTIL (k$ = "S" OR k$ = "s")
+        k$ = ""
+                WHILE (k$ = "")
+                k$ = INKEY$
+                WEND
+                k$ = UCASE$(k$)
+        SELECT CASE k$
+
+        CASE "A"
+        col1% = col1% - 1
+        IF (col1% < 0) THEN col1% = 255
+        LOCATE 1, 1
+        IF (reads%(col1%) <> 0) THEN COLOR 10
+        PRINT "Select colour :"; col1%; " Rate :"; reads%(col1%); "  ";
+        COLOR 7
+
+        CASE "D"
+        col1% = col1% + 1
+        IF (col1% > 255) THEN col1% = 0
+        LOCATE 1, 1
+        IF (reads%(col1%) <> 0) THEN COLOR 10
+        PRINT "Select colour :"; col1%; " Rate :"; reads%(col1%); "  ";
+        COLOR 7
+
+        CASE ELSE
+        END SELECT
+        LOOP
+
+        col2% = 0
+        LOCATE 1, 1
+        PRINT "Result colour :"; col2%; "                      ";
+        
+        k$ = ""
+        DO UNTIL (k$ = "S" OR k$ = "s")
+        k$ = ""
+                WHILE (k$ = "")
+                k$ = INKEY$
+                WEND
+                k$ = UCASE$(k$)
+        SELECT CASE k$
+
+        CASE "A"
+        col2% = col2% - 1
+        IF (col2% < 0) THEN col2% = 255
+        colour%(col1%) = col2%
+        GOSUB display
+        LOCATE 1, 1
+        PRINT "Result colour :"; col2%; "  ";
+
+        CASE "D"
+        col2% = col2% + 1
+        IF (col2% > 255) THEN col2% = 0
+        colour%(col1%) = col2%
+        GOSUB display
+        LOCATE 1, 1
+        PRINT "Result colour :"; col2%; "  ";
+        
+        CASE ELSE
+        END SELECT
+        LOOP
+        GOSUB display
+
+CASE ELSE
+END SELECT
+LOOP
+'enter
+
+OPEN "B", #2, fl2$
+res$ = CHR$(INT(xres% / 256)) + CHR$(xres% MOD 256) + CHR$(INT(yres% / 256)) + CHR$(yres% MOD 256)
+PUT #2, 1, res$
+pos1& = 5
+FOR i& = datas& TO datae&
+SEEK #1, i&
+col% = ASC(INPUT$(1, #1) + CHR$(0))
+cols$ = CHR$(colour%(col%))
+PUT #2, pos1&, cols$
+pos1& = pos1& + 1
+NEXT
+CLOSE #1, #2
+PRINT "File saved."
+k$ = INPUT$(1)
+
+CLS
+PRINT "Check saved file."
+k$ = INPUT$(1)
+OPEN "B", #1, fl2$
+SEEK #1, 1
+read$ = INPUT$(2, #1)
+xres% = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+SEEK #1, 3
+read$ = INPUT$(2, #1)
+yres% = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+PRINT fl2$
+PRINT ""
+PRINT "X-resolution:"; xres%
+PRINT "Y-resolution:"; yres%
+k$ = INPUT$(1)
+pos1& = 5
+FOR j% = yres% TO 0 STEP -1
+FOR i% = 0 TO xres%
+SEEK #1, pos1&
+col% = ASC(INPUT$(1, #1) + CHR$(0))
+LINE (i%, j%)-(i%, j%), col%
+pos1& = pos1& + 1
+NEXT
+NEXT
+CLOSE #1
+k$ = INPUT$(1)
+SYSTEM
+
+
+'reading , colours , display .
+reading:
+LOCATE 1, 1
+PRINT "Working . . .";
+ERASE reads%
+FOR i& = datas& TO datae&
+SEEK #1, i&
+col% = ASC(INPUT$(1, #1) + CHR$(0))
+reads%(col%) = reads%(col%) + 1
+IF (reads%(col%) > 65536) THEN reads%(col%) = 65536
+NEXT
+RETURN
+colours:
+LOCATE 1, 1
+PRINT "Reading . . .";
+FOR i& = colours& TO coloure&
+SEEK #1, i&
+col% = ASC(INPUT$(1, #1) + CHR$(0))
+colour%(i& - colours&) = col%
+NEXT
+display:
+pos1& = datas&
+FOR j% = yres% TO 0 STEP -1
+FOR i% = 0 TO xres%
+SEEK #1, pos1&
+col% = ASC(INPUT$(1, #1) + CHR$(0))
+col% = colour%(col%)
+LINE (i%, j%)-(i%, j%), col%
+pos1& = pos1& + 1
+NEXT
+NEXT
+RETURN
+

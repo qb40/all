@@ -1,0 +1,10 @@
+Star System ------> qw
+Star --> qw
+Mass -->  2
+Radius -->  2
+Number of planets -->  2
+
+Planet		Radius		Distance		Velocity		Time
+qwe		 221		 55.04767782436418		 1.557062588361148D-06		 222222222
+2		 12		 2.5559380041261		 7.226040873265942D-06		 2223333
+

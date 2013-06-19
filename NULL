@@ -1,0 +1,38 @@
+ASM.LOADPROG......bmptocfg          C.BLINKCURSOR.....bmptocfg
+C.CHARACTER.......bmptocfg          C.CLEARKEY........bmptocfg
+C.DELAY...........bmptocfg          C.DISPSTRING......bmptocfg
+C.FILEREAD........bmptocfg          C.FILEWRITE.......bmptocfg
+C.INPUT...........bmptocfg          C.STRINGCOUNT.....bmptocfg
+C.WORD............bmptocfg          ERR.BMPRESOLUTION..bmptocfg
+ERR.FILENAME......bmptocfg          ERR.FILEPRESENT...bmptocfg
+ERR.RESOLUTION....bmptocfg          ERR.SLIDENUMBER...bmptocfg
+ERR.SLIDEPRESENT..bmptocfg          GRP.DEFAULT.......bmptocfg
+GRP.NOTBOX........bmptocfg          GRP.XORBOX........bmptocfg
+MOUSE.HIDE........bmptocfg          MOUSE.INIT........bmptocfg
+MOUSE.PUT.........bmptocfg          MOUSE.RELATIVESTATUS..bmptocfg
+MOUSE.SETRANGE....bmptocfg          MOUSE.SHOW........bmptocfg
+MOUSE.STATUS......bmptocfg          NOSPC.............bmptocfg
+SND.CLICK.........bmptocfg          SOF.DISPLAY.......bmptocfg
+SOF.ERROR.........bmptocfg          SOF.MESSAGE.......bmptocfg
+SOF.PASTESLIDE....bmptocfg          SOF.SAVERAM.......bmptocfg
+SOF.WRITE.........bmptocfg          TOO.BRUSH.........bmptocfg
+TOO.COLOURENGINE..bmptocfg          TOO.ERASER........bmptocfg
+TOO.PENCIL........bmptocfg          WIN.ASK...........bmptocfg
+WIN.COLOUR........bmptocfg          WIN.COLOURS.......bmptocfg
+WIN.MENU..........bmptocfg          WIN.MENUS.........bmptocfg
+WIN.SCROLL........bmptocfg          WIN.SCROLLS.......bmptocfg
+WIN.TELL..........bmptocfg          
+
+bmptocfg          Offset: 00000010H  Code and data size: a74aH
+  ASM.LOADPROG      C.BLINKCURSOR     C.CHARACTER       C.CLEARKEY
+  C.DELAY           C.DISPSTRING      C.FILEREAD        C.FILEWRITE
+  C.INPUT           C.STRINGCOUNT     C.WORD            ERR.BMPRESOLUTION
+  ERR.FILENAME      ERR.FILEPRESENT   ERR.RESOLUTION    ERR.SLIDENUMBER
+  ERR.SLIDEPRESENT  GRP.DEFAULT       GRP.NOTBOX        GRP.XORBOX
+  MOUSE.HIDE        MOUSE.INIT        MOUSE.PUT         MOUSE.RELATIVESTATUS
+  MOUSE.SETRANGE    MOUSE.SHOW        MOUSE.STATUS      NOSPC
+  SND.CLICK         SOF.DISPLAY       SOF.ERROR         SOF.MESSAGE
+  SOF.PASTESLIDE    SOF.SAVERAM       SOF.WRITE         TOO.BRUSH
+  TOO.COLOURENGINE  TOO.ERASER        TOO.PENCIL        WIN.ASK
+  WIN.COLOUR        WIN.COLOURS       WIN.MENU          WIN.MENUS
+  WIN.SCROLL        WIN.SCROLLS       WIN.TELL        

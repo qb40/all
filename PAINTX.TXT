@@ -1,0 +1,129 @@
+DECLARE SUB paintx (x%, y%, cl%)
+
+SCREEN 13
+k$ = INPUT$(1)
+LINE (10, 10)-(200, 180), 40, B
+paintx 100, 100, 2
+k$ = INPUT$(1)
+
+SUB paintx (x%, y%, cl%)
+'----INITIALIZATION----
+'
+a% = POINT(x%, y%)
+DIM pixelx%(1000), pixely%(1000), pixeld%(1000), pixell%(1000), pixelr%(1000)
+active% = 0
+pixelx%(0) = x%
+pixely%(0) = y%
+pixeld%(0) = -1
+pixell%(0) = 0
+pixelr%(0) = 0
+
+'Do till all pixels are bored.
+DO
+'Save pixel information
+pxc% = pixelx%(active%)
+pyc% = pixely%(active%)
+pdc% = pixeld%(active%)
+plc% = pixell%(active%)
+prc% = pixelr%(active%)
+GOSUB scln
+'End pixel's life or continue?
+IF (left% = -1) THEN active% = active% - 1 ELSE pixely%(active%) = pixely%(active%) + pixeld%(active%)
+'Go left down?
+IF (left% > plc% + 1) THEN
+px1% = pxc% - left%
+px2% = pxc% - plc% - 2
+py1% = pyc% - pdc%
+dir1% = -pdc%
+GOSUB spwnpnt
+'Go left up
+ELSEIF (left% < plc% - 1) THEN
+px1% = pxc% - plc%
+px2% = pxc% - left% - 2
+py1% = pyc%
+dir1% = pdc%
+GOSUB spwnpnt
+END IF
+'Go right down?
+IF (right% > prc% + 1) THEN
+px1% = pxc% + right%
+px2% = pxc% + prc% + 2
+py1% = pyc% - pdc%
+dir1% = -pdc%
+GOSUB spwnpnt
+'Go right up
+ELSEIF (right% < prc% - 1) THEN
+px1% = pxc% + prc%
+px2% = pxc% + right% + 2
+py1% = pyc%
+dir1% = pdc%
+GOSUB spwnpnt
+END IF
+SOUND 21000, .1
+LOOP WHILE (active% >= 0)
+GOTO paintxe
+
+'  ----DRAW SCAN LINE----
+'  Req:
+'  active% : Active working pixel
+'
+'  Yld:
+'  left% : Left length of scan line
+'  right% : Right length of scan line
+'
+scln:
+px% = pixelx%(active%)
+py% = pixely%(active%)
+left% = -1
+right% = -1
+IF (POINT(px%, py%) <> a%) THEN RETURN
+WHILE (POINT(px%, py%) = a% AND px% >= 0)
+PSET (px%, py%), cl%
+cl% = (cl% + 10) MOD 256
+px% = px% - 1
+WEND
+left% = pixelx%(active%) - px%
+px% = pixelx%(active%) + 1
+WHILE (POINT(px%, py%) = a% AND px% <= 319)
+PSET (px%, py%), cl%
+cl% = (cl% + 115) MOD 256
+px% = px% + 1
+WEND
+right% = px% - pixelx%(active%)
+RETURN
+
+'  ----SPAWN POINT FIND----
+'  Req:
+'  px1% : Begining for scan of spawn point
+'  px2% : Ending for scan of spawn point
+'  py1% : Y for scan of spawn point
+'  active% : Current ongoing pixel
+'  dir1% : Direction to proceed for new spawn points
+'
+'  Mdfy:
+'  active% : Pointing to latest spawn point
+'
+'  Yld:
+'  pixel`` : Creates new spawn points
+'
+spwnpnt:
+rate% = 0
+FOR isub% = px1% TO px2% STEP SGN(px2% - px1%)
+IF (POINT(isub%, py1%) = a% AND rate% = 0) THEN
+rate% = 1
+active% = active% + 1
+pixelx%(active%) = isub%
+pixely%(active%) = py1%
+pixeld%(active%) = dir1%
+pixell%(active%) = 0
+pixelr%(active%) = 0
+ELSE
+rate% = 0
+END IF
+NEXT
+RETURN
+
+paintxe:
+
+END SUB
+

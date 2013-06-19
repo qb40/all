@@ -1,0 +1,92 @@
+DECLARE FUNCTION c.ascii$ (s$)
+DECLARE SUB asm.loadprog (fl1$, s$)
+
+
+'Types Beyond
+
+
+'Dimensions Apart
+DIM Video AS STRING
+DIM Video.seg1 AS INTEGER
+DIM Video.off1 AS INTEGER
+
+'CONST is my life
+CONST dll.screen = 0, dll.pixel = 6, dll.notpic = 45, dll.defpalette = 110
+CONST dll.brightness = 152, dll.scroll = 217, dll.box = 308
+
+
+'Loading Zone
+Video$ = ""
+asm.loadprog "screen13.dll", Video
+Video.seg1 = VARSEG(Video)
+Video.off1 = SADD(Video)
+
+'Startup Clear
+CLS
+SCREEN 13
+DEF SEG = Video.seg1
+a1% = Video.off1 + 110  'Set default palette
+CALL absolute(a1%)
+
+k$ = INPUT$(1)
+DEF SEG = Video.seg1
+a1% = Video.off1 + 6  'draw pixels
+FOR i% = 0 TO 319
+FOR j% = 0 TO 199
+CALL absolute(BYVAL i%, BYVAL j%, BYVAL i%, a1%)
+NEXT
+NEXT
+k$ = INPUT$(1)
+x1% = 100
+y1% = 100
+x2% = 110
+y2% = 110
+cl% = 14
+a1% = Video.off1 + 308  'draw box
+CALL absolute(BYVAL x1%, BYVAL y1%, BYVAL x2%, BYVAL y2%, BYVAL cl%, a1%)
+k$ = INPUT$(1)
+BSAVE "aaaa", &HA000, &HFFFF
+DEF SEG = Video.seg1
+a = TIMER
+a1% = Video.off1 + 45  'NOT picture
+x1% = 0
+y1% = 0
+x2% = 319
+y2% = 199
+CALL absolute(BYVAL x1%, BYVAL y1%, BYVAL x2%, BYVAL y2%, a1%)
+PRINT TIMER - a
+k$ = INPUT$(1)
+a1% = Video.off1 + 375
+a = TIMER
+FOR i% = 1 TO 100
+CALL absolute(BYVAL x1%, BYVAL y1%, BYVAL x2%, BYVAL y2%, a1%)
+NEXT
+PRINT TIMER - a
+a1% = Video.off1 + 217
+k$ = INPUT$(1)
+x1% = 1
+a = TIMER
+FOR br% = 1 TO 10
+CALL absolute(BYVAL x1%, a1%)
+NEXT
+PRINT (TIMER - a)
+
+SUB asm.loadprog (fl1$, s$)
+fr% = FREEFILE
+OPEN "B", fr%, fl1$
+FOR i& = 1 TO LOF(fr%)
+SEEK #fr%, i&
+s$ = s$ + INPUT$(1, #fr%)
+NEXT
+CLOSE #fr%
+END SUB
+
+FUNCTION c.ascii$ (s$)
+a1$ = ""
+FOR i% = 1 TO LEN(s$)
+a1$ = a1$ + " [" + LTRIM$(HEX$(ASC(MID$(s$, i%, 1)))) + "]"
+IF (i% MOD 9 = 0) THEN a1$ = a1$ + " ;"
+NEXT
+c.ascii$ = a1$
+END FUNCTION
+

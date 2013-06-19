@@ -1,0 +1,347 @@
+DECLARE FUNCTION c.reverse$ (s$)
+DECLARE FUNCTION c.totalwords% (s$)
+DECLARE FUNCTION c.word$ (s$, no%, s1$, s2$)
+DECLARE FUNCTION c.number$ (n$)
+DECLARE FUNCTION c.removetab$ (k1$)
+DECLARE FUNCTION c.stringword$ (s$, ps%)
+
+DECLARE FUNCTION com.push$ (s$)
+
+DECLARE FUNCTION sof.machinecode$ (cd$)
+DECLARE FUNCTION sof.error$ (n%)
+DECLARE FUNCTION sof.varnumber% (s$)
+DECLARE FUNCTION sof.removecomments$ (s$)
+
+TYPE Registers
+ax AS STRING * 4
+bx AS STRING * 4
+cx AS STRING * 4
+dx AS STRING * 4
+sp AS STRING * 4
+bp AS STRING * 4
+si AS STRING * 4
+di AS STRING * 4
+ds AS STRING * 4
+es AS STRING * 4
+ss AS STRING * 4
+flag AS STRING * 1
+END TYPE
+
+
+DIM CONST.separators AS STRING
+DIM Reg AS Registers
+
+CONST.separators = " ,+-()*/"
+'cmd$ = COMMAND$
+'IF (cmd$ = "") THEN SYSTEM
+source$ = c.word$(cmd$, 1, p1$, p2$)
+compile$ = c.word$(cmd$, 2, p1$, p2$)
+information$ = c.word$(cmd$, 3, p1$, p2$)
+OPEN "I", #1, source$
+OPEN "O", #2, information$
+PRINT #2, "QUICKBASIC ASSEMBLY COMPILER    =    for use with Call Absolute(...)"
+PRINT #2, STRING$(40, "=")
+FOR i% = 1 TO 3
+PRINT #2, ""
+NEXT
+PRINT #2, "Program Code"
+PRINT #2, STRING$(15, "=")
+PRINT #2, ""
+
+DO UNTIL EOF(1)
+LINE INPUT #1, assembly$
+PRINT #2, "||"; assembly$; "||"
+assembly$ = c.removetab$(sof.removecomments$(assembly$))
+a1$ = LCASE$(c.word$(assembly$, 1, p1$, p2$))
+SELECT CASE a1$
+CASE "subroutine"
+GOSUB men.subroutine
+CASE "function"
+GOSUB men.function
+CASE ELSE
+GOSUB men.commands
+END SELECT
+LOOP
+SYSTEM
+
+
+
+'Men work
+'Subroutines$(x)||Variables$(x,1)||ClearStack%=retf x
+men.subroutine:
+Subroutines$(Subnumber%) = c.word$(assembly$, 2, p1$, p2$)
+IF (FunctionActive% = 1) THEN Subroutines$(Subnumber%) = Subroutines$(Subnumber%) + CHR$(1) ELSE Subroutines$(Subnumber%) = Subroutines$(Subnumber%) + CHR$(0)
+FunctionActive% = 0
+Subnumber% = Subnumber% + 1
+IF (p2$ <> "(" OR p2$ <> " ") THEN Error$ = Error$ + CHR$(2)
+aa1% = c.totalwords%(assembly$)
+ERASE Variables$
+aa2% = 6
+ClearStack% = 0
+IF (aa1% > 1) THEN
+Reg.bp = "dddd"         'push bp:mov bp,sp
+FOR i% = aa1% TO 2 STEP -1
+aa1$ = c.word$(assembly$, i%, p1$, p2$)
+IF (p1$ <> "," OR p1$ <> "(" OR p2$ <> "," OR p2$ <> ") ") THEN Error$ = Error$ + CHR$(4)
+Variables$(i% - 2, 0) = aa1$
+Variables$(i% - 2, 1) = "[BP+" + HEX$(aa2%) + "]"
+SELECT CASE RIGHT$(aa1$, 1)
+CASE "!"
+        aa2% = aa2% + 1
+        ClearStack% = ClearStack% + 1
+CASE "@"
+        aa2% = aa2% + 2
+        ClearStack% = ClearStack% + 2
+CASE ELSE
+        Error$ = Error$ + CHR$(3)
+END SELECT
+NEXT
+RETURN
+
+'Subroutines$(x)||Variables$(x,1)||ClearStack%=retf x
+men.function:
+FunctionActive% = 1
+GOSUB men.subroutine
+RETURN
+
+men.commands:
+aa1$ = c.word$(assembly$, 1, p1$, p2$)
+SELECT CASE aa1$
+CASE "dataseg"
+
+CASE ELSE
+END SELECT
+RETURN
+
+FUNCTION c.number$ (n$)
+a1$ = RIGHT$(n$, 1)
+SELECT CASE n$
+CASE "d"
+        a1$ = HEX$(VAL(LEFT$(a1$, LEN(a1$) - 1)))
+CASE "b"
+        a1$ = LEFT$(a1$, LEN(a1$) - 1)
+        FOR i% = LEN(a1$) TO 1 STEP -1
+        a2$ = MID$(a1$, i%, 1)
+        IF (a2$ = "1") THEN a1% = a1% + 2 ^ a2%
+        a2% = a2% + 1
+        NEXT
+        a1$ = HEX$(a1%)
+CASE ELSE
+        a1$ = LEFT$(a1$, LEN(a1$) - 1)
+END SELECT
+c.number$ = a1$
+END FUNCTION
+
+FUNCTION c.removetab$ (k1$)
+b$ = ""
+FOR i% = 1 TO LEN(k1$)
+a$ = MID$(k1$, i%, 1)
+IF (a$ = CHR$(9)) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 0) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 1) THEN
+ELSE
+b$ = b$ + a$
+spa% = 0
+END IF
+NEXT
+b$ = LTRIM$(RTRIM$(b$))
+c.removetab$ = b$
+END FUNCTION
+
+FUNCTION c.reverse$ (s$)
+FOR i% = LEN(s$) TO 1 STEP -1
+a1$ = a1$ + MID$(s$, i%, 1)
+NEXT
+c.reverse$ = a1$
+END FUNCTION
+
+FUNCTION c.stringword$ (s$, ps%)
+SHARED CONST.separators AS STRING
+
+b$ = ""
+i% = ps%
+sep% = 1
+char% = 0
+'Recieve all separators first
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% <> 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve the next characters till a separator
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve back code
+
+i% = ps% - 1
+IF (i% < 1) THEN GOTO c.stringword1
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = a1$ + b$ ELSE EXIT DO
+    i% = i% - 1
+    IF (i% < 1) THEN EXIT DO
+LOOP
+c.stringword1:
+c.stringword$ = b$
+END FUNCTION
+
+FUNCTION c.totalwords% (s$)
+i% = 0
+DO
+IF (c.word$(s$, i% + 1, p1$, p2$) = "") THEN EXIT DO
+i% = i% + 1
+LOOP
+c.totalwords% = i%
+END FUNCTION
+
+FUNCTION c.word$ (s$, no%, s1$, s2$)
+SHARED CONST.separators AS STRING
+s1$ = ""
+s2$ = ""
+ss$ = c.removetab$(s$) + " "
+w1% = 0
+st% = 1
+leng% = LEN(ss$)
+FOR i% = 1 TO LEN(ss$)
+a$ = MID$(ss$, i%, 1)
+    'check if end of word
+    IF (INSTR(CONST.separators, a$)) THEN a1% = 1 ELSE a1% = 0
+    IF (INSTR(CONST.separators, MID$(ss$, st%, 1))) THEN
+    a1% = 0
+    st% = st% + 1
+    END IF
+ 
+IF (a1% = 1) THEN
+w1% = w1% + 1
+        'report for word
+        IF (w1% = no%) THEN
+        st$ = MID$(ss$, st%, i% - st%)
+        IF (st$ = "") THEN
+            no% = no% + 1
+            st% = st% + 1
+        END IF
+        IF (w1% <> 1) THEN
+            a1% = 1
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, st% - a1%, 1)) AND (st% - a1% > 0))
+            s1$ = s1$ + MID$(ss$, st% - a1%, 1)
+            a1% = a1% + 1
+            LOOP
+            s1$ = c.reverse$(s1$)
+        ELSE
+        IF (st% > 1) THEN s1$ = LEFT$(ss$, st% - 1) ELSE s1$ = ""
+        END IF
+            a1% = 0
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, i% + a1%, 1)) AND (i% + a1% <= leng%))
+            s2$ = s2$ + MID$(ss$, i% + a1%, 1)
+            a1% = a1% + 1
+            LOOP
+        IF (w1% = no%) THEN EXIT FOR
+        ELSE
+        st% = i% + 1
+        END IF
+END IF
+NEXT
+c.word$ = st$
+END FUNCTION
+
+FUNCTION com.push$ (s$)
+SHARED Variables$, Error$
+a1% = c.totalwords%(s$)
+FOR i% = 2 TO a1%
+a1$ = c.word$(s$, i%, p1$, p2$)
+IF (p1$ <> " " OR p1$ <> "," OR p2$ <> "," OR p2$ <> " ") THEN
+Error$ = Error$ + CHR$(0)
+GOTO pushe
+END IF
+a2% = sof.varnumber%(a1$)
+IF (a2% = -1) THEN
+Error$ = Error$ + CHR$(1)
+GOTO pushe
+END IF
+
+
+NEXT
+pushe:
+END FUNCTION
+
+FUNCTION sof.error$ (n%)
+SHARED Error$
+IF (n% > LEN(Error$)) THEN GOTO errore
+a1% = ASC(MID$(Error$, n%, 1))
+SELECT CASE a1%
+CASE 0
+a1$ = "Syntax Error in PUSH (use `,')"
+CASE 1
+a1$ = "Unknown Variable Used (declare first)"
+CASE 2
+a1$ = "Use `(' after a subroutine if any parameters are there"
+CASE 3
+a1$ = "Improper Variable Declaration (use ! or @ after the variablename)"
+CASE 4
+a1$ = "Wrong Separators used with Variables (use `,')"
+CASE ELSE
+END SELECT
+errore:
+sof.error$ = a1$
+END FUNCTION
+
+FUNCTION sof.machinecode$ (cd$)
+fr% = FREEFILE
+OPEN "O", #fr%, "zzzzzzzz.ini"
+PRINT #fr%, "a"
+PRINT #fr%, cd$
+PRINT #fr%, ""
+PRINT #fr%, "n zzzzzzzx.ini"
+PRINT #fr%, "r cx"
+PRINT #fr%, "ff"
+PRINT #fr%, "w"
+PRINT #fr%, "q"
+CLOSE #fr%
+SHELL "debug <zzzzzzzz.ini >zzzzzzzy.ini"
+OPEN "I", #fr%, "zzzzzzzy.ini"
+FOR i% = 1 TO 5
+LINE INPUT #fr%, a1$
+NEXT
+a1% = VAL("&H" + MID$(a1$, 8, 2))
+CLOSE #fr%
+OPEN "B", #fr%, "zzzzzzzx.ini"
+SEEK #fr%, 1
+a1$ = INPUT$(a1%, #fr%)
+CLOSE #fr%
+KILL "zzzzzzzz.ini"
+KILL "zzzzzzzy.ini"
+KILL "zzzzzzzx.ini"
+sof.machinecode$ = a1$
+END FUNCTION
+
+FUNCTION sof.removecomments$ (s$)
+s1$ = s$
+a1% = INSTR(s1$, ";")
+IF (a1% <> 0) THEN s1$ = LEFT$(s1$, a1% - 1)
+sof.removecomments$ = s1$
+END FUNCTION
+
+FUNCTION sof.varnumber% (s$)
+SHARED Variables$()
+s1$ = LCASE$(s$)
+FOR i% = 0 TO UBOUND(Variables$, 1)
+a1$ = Variables$(i%, 0)
+IF (LEFT$(a1$, 1) = CHR$(0)) THEN a1$ = RIGHT$(a1$, LEN(a1$) - 3)
+IF (a1$ = s1$) THEN
+sof.varnumber% = i%
+GOTO varnumbere
+NEXT
+sof.varnumber% = -1
+varnumbere:
+END FUNCTION
+

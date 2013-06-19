@@ -1,0 +1,118 @@
+DECLARE FUNCTION c.ascii$ (s$)
+DECLARE FUNCTION c.long& (a1%)
+DECLARE FUNCTION c.int% (a1&)
+DECLARE FUNCTION asm.loadstring$ (seg1%, off1%, leng&)
+DECLARE SUB asm.loadprog (fl1$, s$)
+DECLARE SUB asm.pokewordi (a1%, mem1&, mem2&)
+DECLARE SUB asm.pokewordl (a1&, mem1&, mem2&)
+DECLARE SUB asm.pokebytei (a1%, mem1&, mem2&)
+DECLARE FUNCTION asm.peekbytei% (mem1&, mem2&)
+DECLARE FUNCTION asm.peekwordi% (mem1&, mem2&)
+DECLARE FUNCTION asm.peekwordl& (mem1&, mem2&)
+DECLARE SUB asm.run (s$, off1&)
+
+'a& = SETMEM(2000000000)
+CLS
+s$ = ""
+asm.loadprog "ems.dll", s$
+s1$ = SPACE$(8)
+FOR k& = 0 TO 0
+CALL absolute(BYVAL VARSEG(s1$), BYVAL SADD(s1$), SADD(s$))
+NEXT
+PRINT s1$
+PRINT (s1% AND &HFF00); ((s1% AND &HF0) \ 16); "."; (s1% AND &HF)
+times2# = TIMER - times1#
+PRINT "Shift time ="; times2#
+PRINT "Each Shift Time ="; times2# / 200
+
+SUB asm.loadprog (fl1$, s$)
+fr% = FREEFILE
+OPEN "B", fr%, fl1$
+FOR i& = 1 TO LOF(1)
+s$ = s$ + INPUT$(1, #fr%)
+NEXT
+CLOSE #fr%
+END SUB
+
+FUNCTION asm.loadstring$ (seg1%, off1%, leng&)
+a$ = ""
+DEF SEG = c.long&(seg1%)
+off1& = c.long&(off1%)
+FOR i& = 0 TO leng& - 1
+a$ = a$ + CHR$(PEEK(off1& + i&))
+NEXT
+asm.loadstring$ = a$
+END FUNCTION
+
+FUNCTION asm.peekbytei% (mem1&, mem2&)
+DEF SEG = mem1&
+a1% = PEEK(mem2&)
+DEF SEG
+asm.peekbytei% = a1%
+END FUNCTION
+
+FUNCTION asm.peekwordi% (mem1&, mem2&)
+DEF SEG = mem1&
+a1% = PEEK(mem2&)
+a1% = a1% + PEEK(mem2& + 1) * &H100
+DEF SEG
+asm.peekwordi% = a1%
+END FUNCTION
+
+FUNCTION asm.peekwordl& (mem1&, mem2&)
+DEF SEG = mem1&
+a1& = PEEK(mem2&)
+a1& = a1& + PEEK(mem2& + 1) * &H100
+DEF SEG
+asm.peekwordl& = a1&
+END FUNCTION
+
+SUB asm.pokebytei (a1%, mem1&, mem2&)
+DEF SEG = mem1&
+POKE mem2&, a1% AND &HFF
+DEF SEG
+END SUB
+
+SUB asm.pokewordi (a1%, mem1&, mem2&)
+DEF SEG = mem1&
+POKE mem2&, a1% \ &H100
+POKE mem2& + 1, a1% AND &HFF
+DEF SEG
+END SUB
+
+SUB asm.pokewordl (a1&, mem1&, mem2&)
+DEF SEG = mem1&
+POKE mem2&, (a1& AND &HFF00) \ &H100
+POKE mem2& + 1, a1& AND &HFF
+DEF SEG
+END SUB
+
+SUB asm.run (s$, off1&)
+DEF SEG = VARSEG(s$)
+mem1& = SADD(s$) + off1&
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+FUNCTION c.ascii$ (s$)
+a1$ = ""
+FOR i% = 1 TO LEN(s$)
+a1$ = a1$ + " [" + LTRIM$(STR$(ASC(MID$(s$, i%, 1)))) + "]"
+IF (i% MOD 9 = 0) THEN a1$ = a1$ + " ;"
+NEXT
+c.ascii$ = a1$
+END FUNCTION
+
+FUNCTION c.int% (a1&)
+a& = a1&
+IF (a& > 32767) THEN a& = -65536 + a&
+a% = CINT(a&)
+c.int% = a%
+END FUNCTION
+
+FUNCTION c.long& (a1%)
+a& = CLNG(a1%)
+IF (a& < 0) THEN a& = 65536 + a&
+c.long& = a&
+END FUNCTION
+

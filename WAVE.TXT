@@ -1,0 +1,10 @@
+INPUT f$
+INPUT p
+OPEN "B", #1, f$
+FOR i = 1 TO LOF(1)
+SEEK #1, i
+a = ASC(INPUT$(1, #1))
+OUT p, a
+NEXT
+CLOSE #1
+

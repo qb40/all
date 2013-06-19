@@ -1,0 +1,100 @@
+DECLARE FUNCTION Zip1RLE1$ (data$)
+DECLARE FUNCTION Zip1RLE2$ (data$)
+DECLARE FUNCTION Zip2Unicode1$ (data$)
+DECLARE FUNCTION Zip2Unicode2$ (data$)
+DECLARE FUNCTION Zip3Pattern1$ (data$)
+DECLARE FUNCTION Zip3Pattern2$ (data$)
+
+
+PRINT LEN(Zip1RLE1$("AzAzAzzAzAAzAzAzAzBBzBzBzBBzBzBzBzCzCC"))
+
+FUNCTION Zip1RLE1$ (data$)
+total$ = CHR$(0)
+last$ = LEFT$(data$, 1)
+count% = 1
+FOR i% = 1 TO LEN(data$)
+a$ = MID$(data$, i%, 1)
+IF a$ <> last$ THEN
+total$ = total$ + last$ + CHR$(count%)
+last$ = a$
+count% = 1
+ELSE
+count% = count% + 1
+END IF
+NEXT
+total$ = total$ + last$ + CHR$(count%)
+Zip1RLE1$ = total$
+END FUNCTION
+
+FUNCTION Zip1RLE2$ (data$)
+total$ = CHR$(1)
+last$ = LEFT$(data$, 1)
+count% = 1
+FOR i% = 1 TO LEN(data$)
+a$ = MID$(data$, i%, 1)
+IF a$ <> last$ THEN
+total$ = total$ + last$ + MKI$(count%)
+last$ = a$
+count% = 1
+ELSE
+count% = count% + 1
+END IF
+NEXT
+total$ = total$ + last$ + MKI$(count%)
+Zip1RLE2$ = total$
+END FUNCTION
+
+FUNCTION Zip2Unicode1$ (data$)
+total$ = CHR$(2) + RIGHT$(data$, 1) + MKI$(LEN(data$) \ 2)
+FOR i% = 1 TO LEN(data$) STEP 2
+total$ = total$ + MID$(data$, i%, 1)
+NEXT
+Zip2Unicode1$ = total$
+END FUNCTION
+
+FUNCTION Zip2Unicode2$ (data$)
+total$ = CHR$(3) + LEFT$(data$, 1) + MKI$(LEN(data$) \ 2)
+FOR i% = 2 TO LEN(data$) STEP 2
+total$ = total$ + MID$(data$, i%, 1)
+NEXT
+Zip2Unicode2$ = total$
+END FUNCTION
+
+FUNCTION Zip3Pattern1$ (data$)
+a$ = LEFT$(data$, 1)
+leng% = LEN(data$)
+FOR i% = 1 TO leng%
+IF (MID$(data$, i%, 1) <> a$) THEN EXIT FOR
+NEXT
+total$ = CHR$(4) + a$ + MID$(data$, i%, 1) + MKI$(leng%)
+abx% = (leng% \ 8) - (leng% MOD 8 <> 0)
+total$ = total$ + STRING$(abx%, 0)
+DEF SEG = VARSEG(total$)
+Offs& = SADD(total$) + 5
+bit& = 0
+FOR i% = 1 TO leng%
+IF (MID$(data$, i%, 1) = a$) THEN
+byte& = Offs& + (bit& \ 8)
+POKE byte&, (PEEK(byte&) OR 2 ^ (bit& AND 7))
+END IF
+NEXT
+DEF SEG
+Zip3Pattern1$ = total$
+END FUNCTION
+
+FUNCTION Zip3Pattern2$ (data$)
+leng% = LEN(data$)
+DIM char(7) AS STRING * 1
+char(0) = LEFT$(data$, 1)
+chars% = 0
+FOR i% = 1 TO leng%
+a$ = MID$(data$, i%, 1)
+true% = 0
+FOR j% = 0 TO chars%
+IF a$ = char(0) THEN true% = 1: EXIT FOR
+NEXT
+IF (true% = 0) THEN chars% = chars% + 1: chars(chars%) = a$
+NEXT
+
+END FUNCTION
+

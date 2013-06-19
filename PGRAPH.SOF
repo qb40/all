@@ -1,0 +1,2339 @@
+'Draw a Screen 0 slided Image = "aaaa.dat" bsave 4000 bytes
+'xpos,ypos,char,attr
+'if(xpos=255) then new slide
+DECLARE SUB mouse.loadprog ()
+DECLARE FUNCTION mouse.init% ()
+DECLARE SUB mouse.show ()
+DECLARE SUB mouse.start2 ()
+DECLARE SUB mouse.show2 ()
+DECLARE SUB mouse.end2 ()
+DECLARE SUB mouse.start3 ()
+DECLARE SUB mouse.show3 ()
+DECLARE SUB mouse.writeat2 (char%, attr%)
+DECLARE SUB mouse.writeat3 (char%, attr%)
+DECLARE SUB mouse.hide ()
+DECLARE SUB mouse.setrange (x1%, y1%, x2%, y2%)
+DECLARE SUB mouse.put (x&, y&)
+DECLARE SUB mouse.status ()
+DECLARE SUB mouse.relativestatus ()
+
+DECLARE SUB c.blinkcursor (cl%, size!, delay!)
+DECLARE SUB c.character (char$, xx%, yy%, clr%, size!)
+DECLARE SUB c.dispstring (s$, xx%, yy%, clr%, o%, e%, size!)
+DECLARE SUB c.delay (seconds!)
+DECLARE SUB c.clearkey ()
+DECLARE FUNCTION c.removetab$ (k1$)
+DECLARE FUNCTION c.reverse$ (s$)
+DECLARE FUNCTION c.nospc$ (s$)
+DECLARE FUNCTION c.stringcount% (s$, s1$)
+DECLARE FUNCTION c.stringoffset% (s$, s1$, n1%, s2$, n2%, s3$)
+DECLARE FUNCTION c.stringpos% (s$, s1$, no%)
+DECLARE SUB c.stringcut (s$, ps%, lenp%)
+DECLARE FUNCTION c.stringword$ (s$, ps%)
+DECLARE SUB c.stringinsert (s$, ps%, w$)
+DECLARE SUB c.stringchange (s$, ps%, w$)
+
+DECLARE SUB screen.drawaxis ()
+DECLARE FUNCTION screen.input$ (s$, cl%, leng%)
+DECLARE FUNCTION screen.word$ (s$, no%, s1$, s2$)
+DECLARE SUB screen.command (s$)               'Process commands
+DECLARE SUB screen.msg (s$, cl%)
+DECLARE SUB screen.error ()       '<<<
+DECLARE SUB screen.mousepos ()
+
+DECLARE SUB eqn.process ()
+DECLARE SUB eqn.check ()
+DECLARE FUNCTION eqn.task$ (tsk$, prio%)
+DECLARE FUNCTION eqn.comm$ (com$, prio%)
+DECLARE FUNCTION eqn.operat$ (op$)
+DECLARE FUNCTION eqn.unassemble$ (eq$, n%)
+DECLARE FUNCTION eqn.helptask$ (we$, tsk$)
+DECLARE SUB eqn.check2 ()
+DECLARE SUB eqn.priority ()
+DECLARE FUNCTION eqn.assemble$ (s$)
+DECLARE FUNCTION eqn.comhelp$ (n%)
+DECLARE FUNCTION eqn.checknum% (s$)
+DECLARE SUB eqn.setvar (s1$, s2$)
+DECLARE SUB eqn.draw ()
+DECLARE SUB eqn.plot (x#, y#)
+DECLARE FUNCTION eqn.evaluate# (s$)
+DECLARE FUNCTION eqn.findcom% (s$)
+DECLARE SUB eqn.calculate (s$, w%)
+DECLARE SUB eqn.setcom (s$, w%)
+DECLARE FUNCTION eqn.unassembles$ (eq$, s%)
+
+ON ERROR GOTO errors
+
+'Declaring Keys
+CONST backspc = 8, enter = 13, htab = 9, esc = 27
+CONST left = 75, right = 77, up = 72, down = 80
+CONST uplt = 71, uprt = 73, dnlt = 79, dnrt = 81
+CONST insert = 82, home = 73, pageup = 71, del = 83, endk = 81, pagedn = 79
+CONST kf1 = 59, kf2 = 60, kf3 = 61, kf4 = 62, kf5 = 63, kf6 = 64, kf7 = 65, kf8 = 66, kf9 = 67, kf10 = 68, kf11 = 133, kf12 = 134
+'Keys declared
+
+'Declaring constants
+'normal constants
+CONST screenlimitx1 = 10, screenlimity1 = 35, screenlimitx2 = 635, screenlimity2 = 400
+CONST midx = (screenlimitx1 + screenlimitx2) \ 2, midy = (screenlimity1 + screenlimity2) \ 2
+CONST charlimitx1 = 10, charlimity1 = 10, charlimitx2 = 635, charlimity2 = 475
+CONST textslimitx1 = 15, textslimity1 = 405, textslimitx2 = 630, textslimity2 = 465
+CONST textlimitx1 = 25, textlimity1 = 410, textlimitx2 = 630, textlimity2 = 465
+CONST pi = 3.142857142857143#, invpi = .3181818181818182#
+CONST pi2 = pi / 2, pi4 = pi / 4, pi34 = 3 * pi4
+CONST CONST.cursor.blinkspeed = 1000
+CONST CONST.linegap = 10, CONST.cspace = 10
+CONST CONST.blinktime1 = 1 / 19, CONST.blinktime2 = 2
+DIM CONST.separators  AS STRING
+CONST.separators = " :;,.<>={[]}|+-\/*()%^"
+
+TYPE mouse
+        left AS INTEGER
+        right AS INTEGER
+        oldleft AS INTEGER
+        oldright AS INTEGER
+        xpos AS LONG
+        ypos AS LONG
+        oldxpos AS LONG
+        oldypos AS LONG
+        mousetype AS INTEGER
+        mouseattrib AS INTEGER
+        oldmousetype AS INTEGER
+        oldmouseattrib AS INTEGER
+        virtualattrib AS INTEGER
+END TYPE
+DIM Jerry AS mouse
+mouse$ = ""
+Jerry.mousetype = 1
+Jerry.mouseattrib = 1
+Jerry.virtualattrib = 0
+
+TYPE filestring
+        byte AS STRING * 1
+END TYPE
+TYPE pixel
+        x AS INTEGER
+        y AS INTEGER
+END TYPE
+TYPE graph
+        clr AS INTEGER
+        backclr AS INTEGER
+        gap AS INTEGER
+        starts AS INTEGER
+END TYPE
+DIM file AS filestring
+DIM Lastcharpoint AS pixel
+DIM graph1 AS graph
+DIM eqncom(72) AS STRING
+DIM comments(20) AS STRING
+commentno% = 1
+DIM Equation AS STRING, Process AS STRING, Axis AS STRING
+DIM Equation2 AS STRING
+
+'Equation commands
+eqncom(1) = "and(&,&)=&"
+eqncom(2) = "asc($)=%"
+eqncom(3) = "atan(#)=#"
+eqncom(4) = "cdbl(&)=#"
+eqncom(5) = "cint(#)=%"
+eqncom(6) = "clng(#)=&"
+eqncom(7) = "cos(!)=!"
+eqncom(8) = "csng(&)=!"
+eqncom(9) = "cvd($)=#"
+eqncom(10) = "cvdmbf($)=#"
+eqncom(11) = "cvi($)=%"
+eqncom(12) = "cvl($)=&"
+eqncom(13) = "cvs($)=!"
+eqncom(14) = "cvsmbf($)=!"
+eqncom(15) = "eqv(&,&)=&"
+eqncom(16) = "exp(!)=!"
+eqncom(17) = "fix(!)=%"
+eqncom(18) = "fre(&)=&"
+eqncom(19) = "freefile=%"
+eqncom(20) = "hex$(&)=$"
+eqncom(21) = "imp(&,&)=&"
+eqncom(22) = "inp(&)=%"
+eqncom(23) = "int(#)=&"
+eqncom(24) = "len($)=%"
+eqncom(25) = "log(#)=#"
+eqncom(26) = "lpos(%)=%"
+eqncom(27) = "ltrim$($)=$"
+eqncom(28) = "mkd$(#)=$"
+eqncom(29) = "mkdmbf$(#)=$"
+eqncom(30) = "mki$(%)=$"
+eqncom(31) = "mkl$(&)=$"
+eqncom(32) = "mks$(!)=$"
+eqncom(33) = "mksmbf$(!)=$"
+eqncom(34) = "not(&)=&"
+eqncom(35) = "oct$(&)=$"
+eqncom(36) = "or(&,&)=&"
+eqncom(37) = "peek(&)=%"
+eqncom(38) = "pen(%)=%"
+eqncom(39) = "point(%,%)=%"
+eqncom(40) = "pos(%)=%"
+eqncom(41) = "left$($,%)=$"
+eqncom(42) = "mid$($,%,%)=$"
+eqncom(43) = "right$($,%)=$"
+eqncom(44) = "environ$(%)=$"
+eqncom(45) = "chr$(%)=$"
+eqncom(46) = "rnd(%)=#"
+eqncom(47) = "rtrim$($)=$"
+eqncom(48) = "instr(%,$,$)=%"
+eqncom(49) = "screen(%,%,%)=% "
+eqncom(50) = "setmem(&)=&"
+eqncom(51) = "sgn(#)=%"
+eqncom(52) = "space$(%)=$"
+eqncom(53) = "sqr(#)=#"
+eqncom(54) = "stick(%)=%"
+eqncom(55) = "str$(#)=$"
+eqncom(56) = "strig(%)=%"
+eqncom(57) = "string$(%,%)=$"
+eqncom(58) = "sin(#)=#"
+eqncom(59) = "tan(#)=#"
+eqncom(60) = "time$=$"
+eqncom(61) = "timer=!"
+eqncom(62) = "ucase$($)=$"
+eqncom(63) = "lcase$($)=$"
+eqncom(64) = "val($)=#"
+eqncom(65) = "xor(&,&)=&"
+eqncom(66) = "mod(&,&)=&"
+eqncom(67) = "asin(#)=#"
+eqncom(68) = "acos(#)=#"
+eqncom(69) = "sec(#)=#"
+eqncom(70) = "cot(#)=#"
+eqncom(71) = "cosec(#)=#"
+eqncom(72) = "abs(#)=#"
+
+
+'Start mouse
+SCREEN 12
+mouse.loadprog
+a1% = mouse.init%
+IF (a1% <> 1) THEN
+PRINT "Mouse not installed."
+SYSTEM
+END IF
+mouse.put 0, 0
+Jerry.mousetype = 1
+Jerry.mouseattrib = 1
+
+
+CLS
+Lastcharpoint.x = charlimitx1
+Lastcharpoint.y = charlimity1
+c.delay 2
+c.dispstring "Graph Plotter", Lastcharpoint.x, Lastcharpoint.y, 14, 1, 0, 2
+LINE (5, 30)-(640, 34), 1, BF
+LINE (5, 30)-(9, 500), 1, BF
+LINE (10, 401)-(635, 404), 1, BF
+LINE (636, 30)-(645, 500), 1, BF
+LINE (5, 468)-(640, 469), 1, BF
+graph1.clr = 10
+graph1.backclr = 15
+graph1.gap = 20
+screen.drawaxis
+Lastcharpoint.x = textlimitx1
+Lastcharpoint.y = textlimity1
+mouse.show
+'===================
+'MAIN PROGRAM
+'===================
+screen.msg "Welcome to Simple Graph plotter", 10
+DO
+a$ = screen.input$("Input >", 12, 50)
+screen.command a$
+LOOP
+'======
+'ERROR
+'======
+errors:
+Process = Process + CHR$(17)
+RESUME NEXT
+
+SUB c.blinkcursor (cl%, size!, delay!)
+SHARED Lastcharpoint AS pixel
+cl1% = cl%
+FOR lv1% = 1 TO CONST.blinktime2
+mouse.hide
+IF (lv1% MOD 2 = 0) THEN
+cl1% = 0
+LINE (Lastcharpoint.x - 5 * size!, Lastcharpoint.y - 5 * size!)-(Lastcharpoint.x + 5 * size!, Lastcharpoint.y + 5 * size!), cl1%, BF
+ELSE
+cl1% = cl%
+LINE (Lastcharpoint.x - 5 * size!, Lastcharpoint.y - 5 * size!)-(Lastcharpoint.x + 5 * size!, Lastcharpoint.y + 5 * size!), cl1%, BF
+END IF
+mouse.show
+c.delay CONST.blinktime1 * delay!
+NEXT
+END SUB
+
+SUB c.character (char$, xx%, yy%, clr%, size!)
+'check character
+dis% = INT(ASC(char$) - 32)
+IF (dis% > 0) THEN
+sld% = dis%
+fl1$ = "chars.fon"
+ELSE
+LINE (xx% - 5 * size!, yy% - 5 * size!)-(xx% + 5 * size!, yy% + 5 * size!), 0, BF
+GOTO character1
+END IF
+'draw character
+fr% = FREEFILE
+OPEN "B", #fr%, fl1$
+SEEK #fr%, 1
+read$ = INPUT$(2, #fr%)
+xres& = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+read$ = INPUT$(2, #fr%)
+yres& = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+read$ = INPUT$(2, #fr%)
+slds% = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+xx1% = xx% - INT(xres& / 2)
+yy1% = yy% - INT(yres& / 2)
+pos1& = 7 + ((sld% - 1) * (xres& + 1) * (yres& + 1))
+FOR j% = yres& TO 0 STEP -1
+FOR i% = 0 TO xres&
+SEEK #fr%, pos1&
+colour% = ASC(INPUT$(1, #fr%))
+IF (colour% = 1) THEN colour% = clr% ELSE colour% = 0
+LINE (xx1% + i% * size! - size! + 1, yy1% + j% * size! - size! + 1)-(xx1% + i% * size! + size! - 1, yy1% + j% * size! + size! - 1), colour%, BF
+pos1& = pos1& + 1
+NEXT
+NEXT
+CLOSE #fr%
+character1:
+END SUB
+
+SUB c.clearkey
+DEF SEG = 0               'stop beep sound
+POKE &H41A, PEEK(&H41C)   '(by clearing keyboard buffer)
+DEF SEG                   '(Qbasic tip)
+END SUB
+
+SUB c.delay (seconds!)
+times& = 80000 * seconds!
+val1% = INP(&H61)       'connect speaker to timer2
+val1% = val1% OR 3
+OUT &H61, val1%
+FOR i% = 1000 TO 6000 STEP 100
+freq% = i%
+GOSUB delay2
+freq% = 6200 - i%
+GOSUB delay2
+FOR j& = 1 TO times&
+NEXT
+NEXT
+'disconnect speaker from timer2
+val1% = INP(&H61)
+val1% = val1% AND 252
+OUT &H61, val1%
+GOTO delay1
+delay2:
+countdown& = 1193180 \ freq%  'calculate countdown
+low& = countdown& MOD 256'send the lowbyte and highbyte of new countdown value
+high& = countdown& \ 256
+OUT &H43, &HB6    'tell timer2 that we are about to load a new countdown value
+OUT &H42, low&
+OUT &H42, high&
+RETURN
+delay1:
+END SUB
+
+SUB c.dispstring (s$, xx%, yy%, clr%, o%, e%, size!)
+SHARED Lastcharpoint AS pixel, cursoractive%
+
+IF (s$ = CHR$(0)) THEN
+Lastcharpoint.x = charlimitx1
+Lastcharpoint.y = charlimity1
+GOTO c.dispstring1
+END IF
+
+x1% = xx%
+y1% = yy%
+'IF (x1% < charlimtx1) THEN x1% = charlimitx1
+'IF (y1% < charlimty1) THEN y1% = charlimity1
+'IF (x1% > charlimtx2) THEN x1% = charlimitx2
+'IF (y1% > charlimty2) THEN y1% = charlimity2
+FOR i% = 1 TO LEN(s$)
+c$ = MID$(s$, i%, 1)
+IF (o% <> 0) THEN mouse.hide
+c.character c$, x1%, y1%, clr%, size!
+IF (o% <> 0) THEN mouse.show
+x1% = x1% + INT(CONST.cspace * size!)
+IF (x1% >= charlimitx2) THEN
+        x1% = charlimitx1
+        y1% = y1% + INT(CONST.linegap * size!)
+END IF
+Lastcharpoint.x = x1%
+Lastcharpoint.y = y1%
+IF (o% <> 0) THEN c.blinkcursor o%, size!, 1
+NEXT
+IF (e% <> 0) THEN
+y1% = y1% + INT(e% * CONST.linegap * size!)
+x1% = charlimitx1
+Lastcharpoint.x = x1%
+Lastcharpoint.y = y1%
+END IF
+c.dispstring1:
+END SUB
+
+FUNCTION c.nospc$ (s$)
+FOR i% = 1 TO LEN(s$)
+a1$ = MID$(s$, i%, 1)
+IF (a1$ <> " " AND a1$ <> CHR$(9) AND a1$ <> CHR$(0)) THEN a2$ = a2$ + a1$
+NEXT
+c.nospc$ = a2$
+END FUNCTION
+
+FUNCTION c.removetab$ (k1$)
+b$ = ""
+FOR i% = 1 TO LEN(k1$)
+a$ = MID$(k1$, i%, 1)
+IF (a$ = CHR$(9)) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 0) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 1) THEN
+ELSE
+b$ = b$ + a$
+spa% = 0
+END IF
+NEXT
+b$ = LTRIM$(RTRIM$(b$))
+c.removetab$ = b$
+END FUNCTION
+
+FUNCTION c.reverse$ (s$)
+FOR i% = LEN(s$) TO 1 STEP -1
+a1$ = a1$ + MID$(s$, i%, 1)
+NEXT
+c.reverse$ = a1$
+END FUNCTION
+
+SUB c.stringchange (s$, ps%, w$)
+IF (ps% > 1) THEN a1$ = LEFT$(s$, ps% - 1)
+a1$ = a1$ + w$
+a1% = LEN(s$) - ps% - LEN(w$) + 1
+IF (a1% > 0) THEN a1$ = a1$ + RIGHT$(s$, a1%)
+s$ = a1$
+END SUB
+
+FUNCTION c.stringcount% (s$, s1$)
+SHARED Equation AS STRING
+lens% = LEN(s$)
+lens1% = LEN(s1$)
+lens% = lens% - lens1% + 1
+ret% = 0
+FOR i% = 1 TO lens%
+a1$ = MID$(s$, i%, lens1%)
+IF (a1$ = s1$) THEN ret% = ret% + 1
+NEXT
+c.stringcount% = ret%
+END FUNCTION
+
+SUB c.stringcut (s$, ps%, lenp%)
+a$ = LEFT$(s$, ps% - 1)
+a$ = a$ + RIGHT$(s$, LEN(s$) - ps% - lenp% + 1)
+s$ = a$
+END SUB
+
+SUB c.stringinsert (s$, ps%, w$)
+b$ = LEFT$(s$, ps% - 1)
+b$ = b$ + w$
+b$ = b$ + RIGHT$(s$, LEN(s$) - ps% + 1)
+s$ = b$
+END SUB
+
+FUNCTION c.stringoffset% (s$, s1$, n1%, s2$, n2%, s3$)
+'1 Search n1th s1$ in s$
+lens% = LEN(s$) \ 9         'Packets of Original String
+lens1% = LEN(s1$)           'Length of search string
+lens2% = LEN(s2$)           'Length Of Search String
+lens3% = LEN(s3$)           'Length Of End String
+IF (n1% = 0) THEN
+s1pos% = 0
+s3pos% = LEN(s$) \ 9 + 1
+GOTO c.stringoffset2
+END IF
+num% = 0                'Nth term to recieve
+FOR i% = 1 TO lens%     'Loop
+a1$ = MID$(s$, 1 + (i% - 1) * 9, lens1%)    'Get String
+IF (a1$ = s1$) THEN num% = num% + 1
+IF (a1$ = s3$) THEN num% = num% - 1
+    IF (num% = n1%) THEN
+    s1pos% = i%         's1pos% = Packet no.of s1$ `('
+    EXIT FOR            'Is The Search Over
+    END IF
+NEXT                    'Loop
+IF (num% <> n1%) THEN GOTO c.stringoffset1    'Not Found
+
+'2 Search for limiting range(s3$)
+num% = 0
+FOR i% = lens% TO s1pos% STEP -1        'Loop
+a1$ = MID$(s$, 1 + (i% - 1) * 9, lens3%)    'Get String
+IF (a1$ = s3$) THEN num% = num% + 1
+IF (a1$ = s1$) THEN num% = num% - 1
+    IF (num% = n1%) THEN
+    s3pos% = i%     's3pos% = Packet no. of s3$`)'
+    EXIT FOR
+    END IF
+NEXT
+IF (s3pos% = 0) THEN s3pos% = lens%
+
+'3 Search the n2th s2$ within n1th s1$ and s3$
+c.stringoffset2:
+s1pos% = s1pos% + 1     'Read String After s1$ `('
+s3pos% = s3pos% - 1     'Read String Before s3$ `)'
+num% = 0
+a1% = 0
+FOR i% = s1pos% TO s3pos%
+a1$ = MID$(s$, 1 + (i% - 1) * 9, lens2%)    'Get String For s2$
+a6$ = MID$(s$, 1 + (i% - 1) * 9, lens1%)
+a7$ = MID$(s$, 1 + (i% - 1) * 9, lens3%)
+IF (a7$ = s1$) THEN a1% = a1% + 1
+IF (a7$ = s3$) THEN a1% = a1% - 1
+IF (a1$ = s2$ AND a1% = 0) THEN         'Yes, Found One
+    num% = num% + 1
+    s2pos% = i%                         'Packet no. of s2$ `+',`-',etc.
+    IF (num% = n2%) THEN EXIT FOR       'It Is The Required One
+    END IF
+NEXT
+IF (num% <> n2%) THEN GOTO c.stringoffset1
+ret% = s2pos%
+
+c.stringoffset1:
+c.stringoffset% = ret%
+END FUNCTION
+
+FUNCTION c.stringpos% (s$, s1$, no%)
+lens% = LEN(s$)
+lens1% = LEN(s1$)
+lens% = lens% - lens1% + 1
+num% = 0
+FOR i% = 1 TO lens%
+a1$ = MID$(s$, i%, lens1%)
+IF (a1$ = s1$) THEN
+    num% = num% + 1
+    s1pos% = i%
+    IF (num% = no%) THEN EXIT FOR
+    END IF
+NEXT
+IF (num% <> no%) THEN GOTO c.stringpos1
+ret% = s1pos%
+
+c.stringpos1:
+c.stringpos% = ret%
+END FUNCTION
+
+FUNCTION c.stringword$ (s$, ps%)
+SHARED CONST.separators AS STRING
+
+b$ = ""
+i% = ps%
+sep% = 1
+char% = 0
+'Recieve all separators first
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% <> 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve the next characters till a separator
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve back code
+
+i% = ps% - 1
+IF (i% < 1) THEN GOTO c.stringword1
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = a1$ + b$ ELSE EXIT DO
+    i% = i% - 1
+    IF (i% < 1) THEN EXIT DO
+LOOP
+c.stringword1:
+c.stringword$ = b$
+END FUNCTION
+
+FUNCTION eqn.assemble$ (eqn1$)
+SHARED Process AS STRING, CONST.separators AS STRING
+
+'Thus making the program modular
+sep$ = ",<>={[]}|+-\/*()^ "
+SWAP sep$, CONST.separators
+
+eqn2$ = ""
+a1% = 1
+DO
+w1$ = screen.word$(eqn1$, a1%, p1$, p2$)
+p2$ = c.nospc$(p2$)
+IF (LEN(w1$) = 0) THEN EXIT DO
+    'Add first task
+    IF (a1% = 1) THEN eqn2$ = eqn2$ + eqn.helptask$("", p1$)
+    'Check wether the word is a command
+    a2% = eqn.findcom%(w1$)
+    IF (a2% <> 0) THEN eqn2$ = eqn2$ + eqn.comm$(w1$, 0) ELSE eqn2$ = eqn2$ + eqn.operat$(w1$)
+    'Add the task, if any
+    eqn2$ = eqn2$ + eqn.helptask$(w1$, p2$)
+a1% = a1% + 1
+LOOP UNTIL w1$ = ""
+
+'Check wether error occured
+IF (LEN(eqn2$) MOD 9 <> 0) THEN Process = Process + CHR$(4)
+
+SWAP sep$, CONST.separators
+eqn.assemble$ = eqn2$
+END FUNCTION
+
+SUB eqn.calculate (s$, w%)
+SHARED Process AS STRING
+
+'Check the operator first
+a1$ = MID$(s$, 1 + (w% - 1) * 9, 9)
+a1% = ASC(LEFT$(a1$, 1))
+IF (a1% <> 2) THEN GOTO calculate1
+
+'Get The Operation
+a2% = ASC(MID$(a1$, 2, 1))
+
+'Check The Operands
+IF (a2% > 2) THEN
+    IF (MID$(s$, 1 + (w% - 2) * 9, 1) <> CHR$(0)) THEN Process = Process + CHR$(19)
+    b1# = CVD(MID$(s$, 2 + (w% - 2) * 9, 8))
+    END IF
+    IF (MID$(s$, 1 + w% * 9, 1) <> CHR$(0)) THEN Process = Process + CHR$(19)
+    b2# = CVD(MID$(s$, 2 + w% * 9, 8))
+
+'Perform The Operation
+SELECT CASE a2%
+        CASE 1
+        b3# = -1 * b2#
+        CASE 2
+        b3# = b2#
+        CASE 3
+        b3# = b1# - b2#
+        CASE 4
+        b3# = b1# + b2#
+        CASE 5
+        b3# = b1# * b2#
+        CASE 6
+        IF (b2# <> 0) THEN b3# = b1# / b2# ELSE b3# = 10000
+        CASE 7
+        IF (INT(b2#) <> 0) THEN b3# = INT(b1#) \ INT(b2#) ELSE b3# = 10000
+        CASE 8
+        b3# = INT(b1#) MOD INT(b2#)
+        CASE 9
+        b3# = INT(b1#) AND INT(b2#)
+        CASE 10
+        b3# = b1# ^ b2#
+CASE ELSE
+END SELECT
+
+IF (a2% < 3) THEN c.stringcut s$, 1 + (w% - 1) * 9, 18 ELSE c.stringcut s$, 1 + (w% - 2) * 9, 27
+a1$ = CHR$(0) + MKD$(b3#)
+IF (a2% < 3) THEN c.stringinsert s$, 1 + (w% - 1) * 9, a1$ ELSE c.stringinsert s$, 1 + (w% - 2) * 9, a1$
+calculate1:
+END SUB
+
+SUB eqn.check
+SHARED Equation AS STRING, CONST.separators AS STRING, Process AS STRING
+SHARED Axis AS STRING
+
+'Modular separators
+sep$ = " :;,.<>={[]}|+-\/*()%^"
+SWAP sep$, CONST.separators
+
+Equation = c.nospc$(LCASE$(Equation))
+'1 Check for illegal characters
+a1$ = "`~!@#$%&_|\{[]}<>?':;" + CHR$(34)
+a3$ = CHR$(1)
+FOR a1% = 1 TO LEN(a1$)
+a2$ = MID$(a1$, a1%, 1)
+IF (INSTR(Equation, a2$) <> 0) THEN Process = Process + a3$ + a2$
+NEXT
+
+'2 Check for uncompleted brackets
+a1% = 0
+a2% = 0
+FOR a3% = 1 TO LEN(Equation)
+IF (MID$(Equation, a3%, 1) = "(") THEN a1% = a1% + 1
+IF (MID$(Equation, a3%, 1) = ")") THEN a2% = a2% + 1
+NEXT
+IF (a1% <> a2%) THEN Process = Process + CHR$(2)
+
+'3 Check for variables of length greater than 8
+a1% = 1
+DO
+w1$ = screen.word$(Equation, a1%, p1$, p2$)
+a2% = eqn.checknum%(w1$)
+w1$ = LEFT$(w1$, 10)
+IF (LEN(w1$) > 10) THEN w1$ = w1$ + "..."
+IF (a2% = -1 AND LEN(w1$) > 8) THEN Process = Process + CHR$(3) + CHR$(LEN(w1$)) + w1$
+a1% = a1% + 1
+LOOP UNTIL w1$ = ""
+
+'4 Count for number of Equals sign
+a2% = 0
+FOR a1% = 1 TO LEN(Equation)
+IF (MID$(Equation, a1%, 1) = "=") THEN a2% = a2% + 1
+NEXT
+IF (a2% > 1) THEN Process = Process + CHR$(5)
+
+'5 Check for axis variable on LHS
+w1$ = screen.word$(Equation, 1, p1$, p2$)
+IF (w1$ = "x") THEN
+    Axis = "x"
+    ELSEIF (w1$ = "y") THEN
+    Axis = "y"
+    ELSE
+    Process = Process + CHR$(8)
+END IF
+IF (LEFT$(p2$, 1) <> "=") THEN Process = Process + CHR$(9)
+IF (LEN(Equation) > 2) THEN Equation = RIGHT$(Equation, LEN(Equation) - 2) ELSE Process = Process + CHR$(10)
+
+'6 Check for null brackets
+a1$ = ""
+FOR a1% = 1 TO LEN(Equation)
+IF (a1% <> 1) THEN a1$ = MID$(Equation, a1% - 1, 1)
+a2$ = MID$(Equation, a1%, 1)
+IF (a1$ = "(" AND a2$ = ")") THEN
+    Process = Process + CHR$(11)
+    EXIT FOR
+    END IF
+NEXT
+
+'7 Check If Axis Is Double Repeated
+i% = 1
+DO
+w1$ = screen.word$(Equation, i%, p1$, p2$)
+IF (w1$ = Axis) THEN
+Process = Process + CHR$(25)
+EXIT DO
+END IF
+i% = i% + 1
+LOOP UNTIL w1$ = ""
+
+
+'Modular separators
+SWAP sep$, CONST.separators
+END SUB
+
+SUB eqn.check2
+SHARED Process AS STRING, Equation2 AS STRING
+
+'1 Check for operator disobeying rule
+leng% = LEN(Equation2) \ 9
+FOR i% = 1 TO leng%
+a1% = ASC(MID$(Equation2, 1 + (i% - 1) * 9, 1))
+IF (a1% = 2) THEN
+    a1$ = a1$ + eqn.unassemble$(Equation2, i%)    'i%-1
+    ELSE
+    IF (a1$ <> "") THEN
+    IF (LEN(a1$) > 2) THEN Process = Process + CHR$(12)
+    IF (LEN(a1$) = 2 AND (RIGHT$(a1$, 1) <> "-" AND RIGHT$(a1$, 1) <> "+")) THEN Process = Process + CHR$(13)
+    IF (LEN(a1$) = 2 AND (LEFT$(a1$, 1) = "`" OR LEFT$(a1$, 1) = "_")) THEN Process = Process + CHR$(14)
+    IF (st% <> 0) THEN a2% = ASC(MID$(Equation2, 1 + (st% - 1) * 9, 1)) ELSE a2% = -1
+    IF ((a1$ = "`" OR a1$ = "_") AND (a2% = 0 OR a2% = 3 OR a2% = 4)) THEN Process = Process + CHR$(15)
+    a1$ = ""
+    END IF
+    st% = i%
+    END IF
+NEXT
+
+'2 Check if any functions do not obey no. of parameters in list
+d1$ = eqn.task$(",", 0)
+d2$ = eqn.task$("(", 0)
+d3$ = eqn.task$(")", 0)
+leng% = LEN(Equation2) \ 9
+FOR i% = 1 TO leng%
+a1% = ASC(MID$(Equation2, 1 + (i% - 1) * 9, 1))
+IF (a1% = 1) THEN
+    a3% = ASC(MID$(Equation2, 2 + (i% - 1) * 9, 1)) 'Function No.
+    a2% = ASC(MID$(Equation2, 5 + (i% - 1) * 9))    'No. Of Parameters
+    c1% = i% + 1    'Start Of Search
+    b1% = 0     'Bracket Read Process
+    FOR j% = c1% TO leng%   'Loop For Searching End Of Parameters
+    b1$ = MID$(Equation2, 1 + (i% - 1) * 9, 2)
+    IF (b1$ = d3$ AND b1% = 0) THEN
+        c2% = j% - 1
+        EXIT FOR
+        END IF
+    IF (b1$ = d2$) THEN b1% = b1% + 1
+    IF (b1$ = d3$) THEN b1% = b1% - 1
+    NEXT
+    b1% = 0     'Bracket Read Process
+    c3% = 1     'Count No. Of Parameters
+    FOR j% = c1% TO c2% 'Loop For Counting No. Of Parameters
+    b1$ = MID$(Equation2, 1 + (i% - 1) * 9, 2)
+    IF (b1$ = d2$) THEN b1% = b1% + 1
+    IF (b1$ = d3$) THEN b1% = b1% - 1
+    IF (b1$ = d3$ AND b1% = 0) THEN
+        c3% = c3% + 1
+        EXIT FOR
+        END IF
+    NEXT
+    IF (a2% <> c3%) THEN Process = Process + CHR$(16) + CHR$(a3%)
+    END IF
+NEXT
+
+'3 Check if any silly variables still present
+leng% = LEN(Equation2) \ 9
+FOR i% = 1 TO leng%
+a1% = ASC(MID$(Equation2, 1 + (i% - 1) * 9, 1))
+IF (a1% = 4) THEN Process = Process + CHR$(28)
+NEXT
+END SUB
+
+FUNCTION eqn.checknum% (s$)
+'ret=1x    ;no error but overflow
+'ret=-1    ;number error
+'ret=x     ;number correct
+s1$ = s$
+ret% = -1
+IF (LEFT$(s1$, 1) = "-") THEN s1$ = RIGHT$(s1$, LEN(s1$) - 1)
+'check for illegal chars
+FOR i% = 1 TO LEN(s1$)
+a1$ = MID$(s1$, i%, 1)
+IF ((a1$ < "0" OR a1$ > "9") AND a1$ <> ".") THEN GOTO eqn.checknum1
+IF (a1$ = ".") THEN
+dots% = dots% + 1
+IF (dots% > 1) THEN GOTO eqn.checknum1
+END IF
+NEXT
+IF (RIGHT$(s1$, 1) = ".") THEN GOTO eqn.checknum1
+'no, the number is a valid number
+IF (dots% = 0 AND VAL(s1$) <= 32767) THEN ret% = 0
+IF (dots% = 0 AND ret% = -1) THEN ret% = 1
+IF (dots% = 1 AND LEN(s1$) <= 8) THEN ret% = 2
+IF (dots% = 1 AND ret% = -1) THEN ret% = 3
+IF (LEN(s1$) > 15) THEN ret1% = 1
+eqn.checknum1:
+eqn.checknum% = SGN(ret%) * (ret1% * 10 + ABS(ret%))
+END FUNCTION
+
+FUNCTION eqn.comhelp$ (n%)
+SHARED eqncom() AS STRING
+SHARED CONST.separators AS STRING
+s1$ = UCASE$(eqncom(n%))
+s2$ = ""
+FOR i% = 1 TO LEN(s1$)
+IF (i% > 1) THEN a1$ = MID$(s1$, i% - 1, 1)
+a2$ = MID$(s1$, i%, 1)
+'check wether a1$ is a separator
+        a1% = 0
+        FOR j% = 1 TO LEN(CONST.separators)
+        k1$ = MID$(CONST.separators, j%, 1)
+        IF (k1$ = a1$) THEN
+        a1% = 1
+        EXIT FOR
+        END IF
+        NEXT
+        IF (a1$ = "") THEN a1% = 1
+'set parameter
+        IF (a1% = 1) THEN
+        a2% = 1
+        SELECT CASE a2$
+        CASE "%"
+        a2$ = " Integer"
+        CASE "&"
+        a2$ = " Long"
+        CASE "!"
+        a2$ = " Single"
+        CASE "#"
+        a2$ = " Double"
+        CASE "$"
+        a2$ = " String"
+        CASE ELSE
+        a2% = 0
+        END SELECT
+        IF (a2% = 1) THEN a2$ = a2$ + "Value "
+        END IF
+        IF (a2$ = "=") THEN a2$ = " <Returns>-----> "
+s2$ = s2$ + a2$
+NEXT
+eqn.comhelp$ = s2$
+END FUNCTION
+
+FUNCTION eqn.comm$ (com$, prio%)
+SHARED eqncom() AS STRING, Process AS STRING
+'1 Function = (1b)function no.,(2b)priority,(1b)no. of parameters
+
+'Find command number    (a1%)
+a1% = eqn.findcom(com$)
+IF (a1% > UBOUND(eqncom)) THEN
+Process = Process + CHR$(18) + CHR$(LEN(com$)) + com$
+GOTO comm1
+END IF
+
+'Find no. of parameters (a2%)
+a2% = INSTR(eqncom(a1%), "(")
+IF (a2% <> 0) THEN a2% = 1
+FOR i% = 1 TO LEN(eqncom(a1%))
+IF (MID$(eqncom(a1%), i%, 1) = ",") THEN a2% = a2% + 1
+NEXT
+
+'Make return
+IF (a1% <> 0) THEN a1$ = CHR$(1) + CHR$(a1%) + MKI$(a2%) + CHR$(a2%) + STRING$(4, 0)
+comm1:
+eqn.comm$ = a1$
+END FUNCTION
+
+SUB eqn.draw
+SHARED graph1 AS graph, Equation AS STRING, Equation2 AS STRING
+SHARED eqncom() AS STRING, asgap%
+SHARED Axis AS STRING, Process AS STRING
+
+ret% = -1
+'1st Check Of Equation
+eqn.check
+IF (LEN(Process) <> 0) THEN GOTO draw2
+
+'Process Equation
+eqn.process
+IF (LEN(Process) <> 0) THEN GOTO draw2
+
+'2nd Check Of Equation
+eqn.check2
+
+IF (Process <> "") THEN GOTO draw2
+
+'Run The Equation
+axs$ = CHR$(3)
+IF (Axis = "x") THEN axs$ = axs$ + CHR$(1) + STRING$(7, 0) ELSE axs$ = axs$ + STRING$(8, 0)
+Xmax# = -320
+Ymax# = -320
+Xmin# = 320
+Ymin# = 320
+IF (asgap% = 1) THEN
+Steps# = 1! / graph1.gap
+Start# = -320# / graph1.gap
+Stops# = -1 * Start#
+ELSE
+Steps# = 1
+Start# = -320
+Stops# = 320
+END IF
+
+VIEW SCREEN (screenlimitx1, screenlimity1)-(screenlimitx2, screenlimity2)
+graph1.starts = 1
+FOR bomb# = Start# TO Stops# STEP Steps#
+  
+    'Replace all axis string by real values
+    eqn$ = Equation2
+    a1$ = CHR$(0) + MKD$(bomb#)
+    a1% = LEN(eqn$) \ 9
+    FOR ax% = 1 TO a1%
+    IF (MID$(eqn$, 1 + (ax% - 1) * 9, 9) = axs$) THEN
+        c.stringcut eqn$, 1 + (ax% - 1) * 9, 9
+        c.stringinsert eqn$, 1 + (ax% - 1) * 9, a1$
+        END IF
+    NEXT
+  
+    'Evaluate Equation
+    Result# = eqn.evaluate#(eqn$)
+  
+    'Step-3
+    'Detect wether the result is a maximum or minimum
+    IF (Axis$ = "x") THEN
+        IF (Result# > Ymax#) THEN
+            Ymax# = Result#
+            Xmax# = bomb#
+            END IF
+        IF (Result# < Ymin#) THEN
+            Ymin# = Result#
+            Xmin# = bomb#
+            END IF
+    ELSEIF (Axis$ = "y") THEN
+        IF (Result# > Xmax#) THEN
+            Xmax# = Result#
+            Ymax# = bomb#
+            END IF
+        IF (Result# < Xmin#) THEN
+            Xmin# = Result#
+            Ymin# = bomb#
+            END IF
+    END IF
+
+    'Step-3
+    'Now is the time to display the result
+    IF (Axis = "x") THEN eqn.plot Result#, bomb# ELSE eqn.plot bomb#, Result#
+
+graph1.starts = 0
+NEXT
+VIEW
+ret% = 0
+GOTO draw1
+draw2:
+screen.error
+draw1:
+IF (ret% = 0) THEN
+screen.error
+screen.msg "Graph Successfully drawn :->", 15
+screen.msg "X-max = " + STR$(Xmax#), 6
+screen.msg "X-min = " + STR$(Xmin#), 6
+screen.msg "Y-max = " + STR$(Ymax#), 6
+screen.msg "Y-min = " + STR$(Ymin#), 6
+k$ = INPUT$(1)
+ELSE
+screen.msg "Sorry! Graph could not be drawn ;-<", 15
+END IF
+Equation = Axis + "=" + Equation
+END SUB
+
+FUNCTION eqn.evaluate# (s$)
+SHARED Process AS STRING
+
+'Evaluate According To Set Priority
+'Starts With 32767
+pri% = 32767
+leng% = LEN(s$) \ 9
+i% = 1
+DO WHILE i% <= leng%
+a1% = ASC(MID$(s$, 1 + (i% - 1) * 9, 1))    'Check Wether Function Or Task
+IF (a1% = 1 OR a1% = 2) THEN
+    a2% = CVI(MID$(s$, 3 + (i% - 1) * 9, 2))    'Get Priority
+    IF (a2% = pri%) THEN
+        IF (a1% = 1) THEN eqn.setcom s$, i% ELSE eqn.calculate s$, i%
+        i% = 0
+        pri% = pri% - 1
+    END IF
+END IF
+IF (i% = leng%) THEN
+pri% = pri% - 1
+i% = 0
+END IF
+i% = i% + 1
+leng% = LEN(s$) \ 9
+IF (leng% = 1) THEN EXIT DO
+LOOP
+
+IF (LEFT$(s$, 1) <> CHR$(0)) THEN Process = Process + CHR$(20)
+IF (s$ = "") THEN a1# = 0 ELSE a1# = CVD(RIGHT$(s$, 8))
+evaluate1:
+eqn.evaluate# = a1#
+END FUNCTION
+
+FUNCTION eqn.findcom% (s$)
+SHARED eqncom() AS STRING
+s1$ = c.nospc$(s$)
+ret% = 0
+FOR i% = 1 TO UBOUND(eqncom)
+w1$ = screen.word$(eqncom(i%), 1, p1$, p2$)
+IF (w1$ = s1$) THEN
+ret% = i%
+EXIT FOR
+END IF
+NEXT
+eqn.findcom% = ret%
+END FUNCTION
+
+FUNCTION eqn.helptask$ (we$, tsk$)
+SHARED Process AS STRING
+a1$ = ""
+brac% = 0
+FOR i% = 1 TO LEN(tsk$)
+a2$ = MID$(tsk$, i%, 1)
+
+'Large Nested IF
+    IF (a2$ = "-" AND we$ <> "" AND brac% = 0) THEN        'Subtract
+    a1$ = a1$ + eqn.task$("-", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "-" AND we$ <> "" AND brac% > 0) THEN   'Two's complement
+    a1$ = a1$ + eqn.task$("_", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "-" AND we$ = "") THEN                    'Two's complement
+    a1$ = a1$ + eqn.task$("_", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "+" AND we$ <> "" AND brac% = 0) THEN    'Add
+    a1$ = a1$ + eqn.task$("+", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "+" AND we$ <> "" AND brac% > 0) THEN   'Positify
+    a1$ = a1$ + eqn.task$("`", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "+" AND we$ = "") THEN                    'Positify
+    a1$ = a1$ + eqn.task$("`", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "*") THEN
+    a1$ = a1$ + eqn.task$("*", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "/") THEN
+    a1$ = a1$ + eqn.task$("/", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "\") THEN
+    a1$ = a1$ + eqn.task$("\", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "%") THEN
+    a1$ = a1$ + eqn.task$("%", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "&") THEN
+    a1$ = a1$ + eqn.task$("&", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "^") THEN
+    a1$ = a1$ + eqn.task$("^", 0)
+    brac% = brac% + 1
+    ELSEIF (a2$ = "(") THEN
+    a1$ = a1$ + eqn.task$("(", 0)
+    brac% = 1
+    ELSEIF (a2$ = ")") THEN
+    a1$ = a1$ + eqn.task$(")", 0)
+    ELSEIF (a2$ = ",") THEN
+    a1$ = a1$ + eqn.task$(",", 0)
+    brac% = brac% + 1
+    ELSE
+    Process = Process + CHR$(7) + CHR$(LEN(tsk$)) + tsk$
+END IF
+NEXT
+IF (brac% > 2) THEN
+    a1$ = ""
+    Process = Process + CHR$(26)
+    END IF
+
+eqn.helptask$ = a1$
+END FUNCTION
+
+FUNCTION eqn.operat$ (op$)
+'           0 Double value = (8b) data
+'           3 Axis variable = (1b) 0=x 1=y
+'           4 Variable      = (8b) variable name
+
+'Check wether it is a number
+a1% = eqn.checknum%(op$)
+IF (a1% >= 0) THEN
+a1# = VAL(op$)
+a1$ = CHR$(0) + MKD$(a1#)
+ELSEIF (op$ = "x") THEN
+a1$ = CHR$(3) + STRING$(8, 0)
+ELSEIF (op$ = "y") THEN
+a1$ = CHR$(3) + CHR$(1) + STRING$(7, 0)
+ELSE
+IF (LEN(op$) > 8) THEN op$ = LEFT$(op$, 8)
+a1$ = CHR$(4) + op$ + STRING$(8 - LEN(op$), 0)
+END IF
+eqn.operat$ = a1$
+END FUNCTION
+
+SUB eqn.plot (x#, y#)
+SHARED asgap%, graph1 AS graph, drawcolour%
+SHARED Lastx, Lasty
+mouse.hide
+IF (asgap% = 0) THEN
+    x1 = midx + CSNG(x#)
+    y1 = midy - CSNG(y#)
+    IF (graph1.starts) THEN
+    Lastx = x1
+    Lasty = y1
+    END IF
+    'screen.xorline Lastx, Lasty, x1, y1, drawcolour%
+    LINE (Lastx, Lasty)-(x1, y1), drawcolour%
+    Lastx = x1
+    Lasty = y1
+ELSE
+    x1 = midx + CSNG(x# * graph1.gap)
+    y1 = midy - CSNG(y# * graph1.gap)
+    IF (graph1.starts) THEN
+    Lastx = x1
+    Lasty = y1
+    END IF
+    'screen.xorline Lastx, Lasty, x1, y1, drawcolour%
+    LINE (Lastx, Lasty)-(x1, y1), drawcolour%
+    Lastx = x1
+    Lasty = y1
+END IF
+mouse.show
+END SUB
+
+SUB eqn.priority
+SHARED CONST.separators AS STRING, Equation2 AS STRING
+
+'Modular separators
+sep$ = " :;,<>={[]}|+-\/*()%^"
+SWAP sep$, CONST.separators
+
+'Priority method
+'B-();E-^;D-/;M-*;A-+;S--
+eq1$ = Equation2
+
+'Now, our task is only to set priority, not ,removing separators.
+b1$ = CHR$(5) + CHR$(2)
+b2$ = CHR$(5) + CHR$(3)
+pri% = 32767
+bracket% = c.stringcount%(eq1$, b1$)   'max `('
+DO
+    'Now search for priority things in bracket
+    'Priority 1: Functions
+    p1$ = "f"
+    GOSUB priority2
+    p1$ = "`"
+    GOSUB priority2
+    p1$ = "_"
+    GOSUB priority2
+    p1$ = "^"
+    GOSUB priority2
+    p1$ = "/"
+    GOSUB priority2
+    p1$ = "\"
+    GOSUB priority2
+    p1$ = "*"
+    GOSUB priority2
+    p1$ = "+"
+    GOSUB priority2
+    p1$ = "-"
+    GOSUB priority2
+    p1$ = "%"
+    GOSUB priority2
+    p1$ = "&"
+    GOSUB priority2
+bracket% = bracket% - 1
+LOOP UNTIL bracket% < 0
+GOTO priority1
+
+priority2:
+IF (p1$ = "f") THEN b3$ = CHR$(1) ELSE b3$ = LEFT$(eqn.task$(p1$, 0), 2)
+ii% = 1
+DO
+'Search for `('-bracket%th b3$-ii%th before `)' and avoid `(' and `)'
+    'Gets The Packet no.
+    a3% = c.stringoffset%(eq1$, b1$, bracket%, b3$, ii%, b2$)
+IF (a3% <> 0) THEN
+    'Just make its priority
+    IF (p1$ <> "f") THEN
+        b4$ = eqn.task$(p1$, pri%)
+        ELSE
+        b4$ = MID$(eq1$, 1 + (a3% - 1) * 9, 9)
+        c1$ = MKI$(pri%)
+        c.stringchange b4$, 3, c1$
+        END IF
+    c.stringchange eq1$, 1 + (a3% - 1) * 9, b4$
+    pri% = pri% - 1
+    ii% = ii% + 1
+    ELSE
+    EXIT DO
+    END IF
+LOOP
+RETURN
+
+priority1:
+Equation2 = eq1$
+'Modular separators
+SWAP sep$, CONST.separators
+END SUB
+
+SUB eqn.process
+'Task-0
+'Share variables
+SHARED Equation AS STRING, CONST.separators AS STRING
+SHARED Process AS STRING, Axis AS STRING, Equation2 AS STRING
+
+'Process the equation
+'Power conversion
+'Process only if no error occured
+IF (LEN(Process) <> 0) THEN GOTO process1
+
+'Task-1
+'Set easy properties to equation
+'Store result in eqn1$
+eqn1$ = Equation
+
+'Task-2
+'Set the CONST.separators to indentify numbers,chars,etc.
+'Thus making the program modular
+sep$ = ",<>={[]}|+-\/*()^"
+SWAP sep$, CONST.separators
+
+'Task-3
+'Recieve all words and convert them to Binary format
+'(1b)   - Character definer
+'(8b)   - Data
+'Total  = (9b)  Each data packet = 9 bytes
+'(b1)   0 Double value
+'       1 Function
+'       2 Task operator
+'       3 Axis variable (x or y)
+'       4 Variable
+'       5 Separator( ,)
+'           0 Double value = (8b) data
+'           1 Function = (1b)function no.,(2b)priority,(1b)no. of parameters
+'           2 Task operator = (1b) task type,(2b) task priority
+'           3 Axis variable = (1b) 0=x 1=y
+'           4 Variable      = (8b) variable name
+'           5 Separator     = (1b) 1=, 2=( 3=) (stop of command ..)
+'
+'Priority to be set later
+'
+eqn2$ = eqn.assemble$(Equation)
+
+'Task-4
+'Check wether error occured
+IF (LEN(eqn2$) MOD 9 <> 0) THEN Process = Process + CHR$(4)
+
+'Task-5
+'Unassemble the equation and match it with original equation
+a1% = LEN(eqn2$) \ 9
+a1$ = Axis + "="
+a1$ = c.nospc$(a1$ + eqn.unassembles$(eqn2$, 0))
+screen.msg a1$, 9
+k$ = INPUT$(1)
+
+'Task-6
+'Now set the Equation for priority
+Equation2 = eqn2$
+eqn.priority
+
+'Task-7
+'Remove all separators. They are not needed any more
+a1$ = ""
+a1% = LEN(Equation2) \ 9
+FOR a2% = 1 TO a1%
+a3% = ASC(MID$(Equation2, 1 + (a2% - 1) * 9, 1))
+IF (a3% <> 5) THEN a1$ = a1$ + MID$(Equation2, 1 + (a2% - 1) * 9, 9)
+NEXT
+Equation2 = a1$
+
+process1:
+END SUB
+
+SUB eqn.setcom (s$, w%)
+SHARED Process AS STRING
+
+'Is The Word A Function
+ a1$ = MID$(s$, 1 + (w% - 1) * 9, 9)
+a2$ = LEFT$(a1$, 1)
+IF (a2$ <> CHR$(1)) THEN GOTO setcom1
+
+'Get The Function no.
+a1% = ASC(MID$(a1$, 2, 1))
+
+'Get No. Of Parameters
+a2% = ASC(MID$(a1$, 5, 1))
+
+'Get The Parameters
+DIM pars(a2%) AS DOUBLE
+FOR i% = w% + 1 TO w% + a2%
+b1$ = MID$(s$, 1 + (i% - 1) * 9, 9)
+IF (LEFT$(b1$, 1) <> CHR$(0)) THEN Process = Process + CHR$(17)
+pars(i% - w%) = CVD(RIGHT$(b1$, 8))
+NEXT
+
+'Cut The String
+c.stringcut s$, 1 + (w% - 1) * 9, (a2% + 1) * 9
+
+SELECT CASE a1%
+    CASE 1
+    r# = INT(pars(1)) AND INT(pars(2))
+    CASE 2
+    r# = ASC(STR$(pars(1)))
+    CASE 3
+    r# = ATN(pars(1))
+    CASE 4
+    r# = CDBL(pars(1))
+    CASE 5
+    r# = CINT(pars(1))
+    CASE 6
+    r# = CLNG(pars(1))
+    CASE 7
+    r# = COS(pars(1))
+    CASE 8
+    r# = CSNG(pars(1))
+    CASE 9
+    r# = CVD(STR$(pars(1)))
+    CASE 10
+    r# = CVDMBF(STR$(pars(1)))
+    CASE 11
+    r# = CVI(STR$(pars(1)))
+    CASE 12
+    r# = CVL(STR$(pars(1)))
+    CASE 13
+    r# = CVS(STR$(pars(1)))
+    CASE 14
+    r# = CVSMBF(STR$(pars(1)))
+    CASE 15
+    r# = INT(pars(1)) EQV INT(pars(1))
+    CASE 16
+    r# = EXP(pars(1))
+    CASE 17
+    r# = FIX(pars(1))
+    CASE 18
+    r# = FRE(pars(1))
+    CASE 19
+    r# = FREEFILE
+    CASE 20
+    r$ = HEX$(INT(pars(1)))
+    CASE 21
+    r# = INT(pars(1)) IMP INT(pars(1))
+    CASE 22
+    r# = INP(INT(pars(1)))
+    CASE 23
+    r# = INT(pars(1))
+    CASE 24
+    r# = LEN(STR$(pars(1)))
+    CASE 25
+    r# = LOG(pars(1))
+    CASE 26
+    r# = LPOS(INT(pars(1)))
+    CASE 27
+    r$ = LTRIM$(STR$(pars(1)))
+    CASE 28
+    r$ = MKD$(pars(1))
+    CASE 29
+    r$ = MKDMBF$(pars(1))
+    CASE 30
+    r$ = MKI$(pars(1))
+    CASE 31
+    r$ = MKL$(pars(1))
+    CASE 32
+    r$ = MKS$(pars(1))
+    CASE 33
+    r$ = MKSMBF$(pars(1))
+    CASE 34
+    r# = NOT (INT(pars(1)))
+    CASE 35
+    r$ = OCT$(INT(pars(1)))
+    CASE 36
+    r# = INT(pars(1)) OR INT(pars(1))
+    CASE 37
+    r# = PEEK(INT(pars(1)))
+    CASE 38
+    r# = PEN(INT(pars(1)))
+    CASE 39
+    r# = POINT(INT(pars(1)), INT(pars(2)))
+    CASE 40
+    r# = POS(INT(pars(1)))
+    CASE 41
+    r$ = LEFT$(STR$(pars(1)), INT(pars(2)))
+    CASE 42
+    r$ = MID$(STR$(pars(1)), INT(pars(2)), INT(pars(3)))
+    CASE 43
+    r$ = RIGHT$(STR$(pars(1)), INT(pars(2)))
+    CASE 44
+    r$ = ENVIRON$(INT(pars(1)))
+    CASE 45
+    r$ = CHR$(INT(pars(1)))
+    CASE 46
+    r# = RND(INT(pars(1)))
+    CASE 47
+    r$ = RTRIM$(STR$(pars(1)))
+    CASE 48
+    r# = INSTR(pars(1), STR$(pars(2)), STR$(pars(3)))
+    CASE 49
+    r# = SCREEN(INT(pars(1)), INT(pars(2)), INT(pars(3)))
+    CASE 50
+    r# = SETMEM(INT(pars(1)))
+    CASE 51
+    r# = SGN(pars(1))
+    CASE 52
+    r$ = SPACE$(INT(pars(1)))
+    CASE 53
+    r# = SQR(pars(1))
+    CASE 54
+    r# = STICK(INT(pars(1)))
+    CASE 55
+    r$ = STR$(pars(1))
+    CASE 56
+    r# = STRIG(INT(pars(1)))
+    CASE 57
+    'r$ = STRING$(INT(pars(1)), INT(pars(2)))
+    CASE 58
+    r# = SIN(pars(1))
+    CASE 59
+    r# = TAN(pars(1))
+    CASE 60
+    r$ = TIME$
+    CASE 61
+    r# = TIMER
+    CASE 62
+    r$ = UCASE$(STR$(pars(1)))
+    CASE 63
+    r$ = LCASE$(STR$(pars(1)))
+    CASE 64
+    r# = VAL(STR$(pars(1)))
+    CASE 65
+    r# = INT(pars(1)) XOR INT(pars(2))
+    CASE 66
+    IF (INT(pars(2)) = 0) THEN r# = 10000 ELSE r# = INT(pars(1)) MOD INT(pars(2))
+    CASE 67     'asin(pars(1))
+    r# = 1 - pars(1) * pars(1)
+    IF (r# < 0) THEN
+    r# = 10000
+    ELSE
+    IF (pars(1) = 0) THEN r# = pi / 2 ELSE r# = ATN(SQR(r#) / pars(1))
+    END IF
+    CASE 68     'acos(pars(1))
+    r# = 1 - pars(1) * pars(1)
+    IF (r# < 0) THEN
+    r# = 10000
+    ELSE
+    IF (pars(1) = 1) THEN r# = pi / 2 ELSE r# = ATN(pars(1) / SQR(r#))
+    END IF
+    CASE 69
+    r# = COS(pars(1))   'Sec
+    IF (r# = 0) THEN r# = 10000 ELSE r# = 1 / r#
+    CASE 70
+    r# = TAN(pars(1))   'Tan
+    IF (r# = 0) THEN r# = 10000 ELSE r# = 1 / r#
+    CASE 71
+    r# = SIN(pars(1))   'Cosec
+    IF (r# = 0) THEN r# = 10000 ELSE r# = 1 / r#
+    CASE 72
+    r# = ABS(pars(1))
+CASE ELSE
+END SELECT
+r$ = CHR$(0) + MKD$(r#)
+c.stringinsert s$, 1 + (w% - 1) * 9, r$
+setcom1:
+END SUB
+
+SUB eqn.setvar (s1$, s2$)
+SHARED Equation AS STRING, CONST.separators AS STRING
+CONST.separators = " :;,.<>={[]}|+-\/*()%^"
+a2$ = ""
+i% = 1
+DO
+w1$ = screen.word$(Equation, i%, p1$, p2$)
+IF (i% = 1) THEN a2$ = a2$ + p1$
+IF (w1$ = s1$) THEN a2$ = a2$ + s2$ ELSE a2$ = a2$ + w1$
+a2$ = a2$ + p2$
+i% = i% + 1
+LOOP UNTIL w1$ = ""
+Equation = a2$
+END SUB
+
+FUNCTION eqn.task$ (tsk$, prio%)
+'2 Task operator = (1b) task type,(2b) task priority
+'5 Separator     = (1b) 1=, 2=( 3=) (stop of command ..)
+
+'Arrange tasks for me
+SELECT CASE tsk$
+    CASE "_"    'Two's complement(NEG)
+    a1% = 1
+    CASE "`"    'Positify (do nothing)
+    a1% = 2
+    CASE "-"    'Subtract
+    a1% = 3
+    CASE "+"    'Add
+    a1% = 4
+    CASE "*"    'Multiply
+    a1% = 5
+    CASE "/"    'Divide
+    a1% = 6
+    CASE "\"    'Integer divde
+    a1% = 7
+    CASE "%"    'Modulus(Remainder)
+    a1% = 8
+    CASE "&"    'Integered AND
+    a1% = 9
+    CASE "^"    'Power
+    a1% = 10
+    CASE ","    'Sep ,
+    a2% = 1
+    CASE "("    'Sep (
+    a2% = 2
+    CASE ")"    'Sep )
+    a2% = 3
+    CASE "="    'Equals(Used only once)
+    a2% = 4
+CASE ELSE
+END SELECT
+IF (a1% <> 0) THEN a1$ = CHR$(2) + CHR$(a1%) + MKI$(prio%) + STRING$(5, 0) ELSE a1$ = ""
+IF (a2% <> 0) THEN a1$ = CHR$(5) + CHR$(a2%) + STRING$(7, 0)
+eqn.task$ = a1$
+END FUNCTION
+
+FUNCTION eqn.unassemble$ (eq$, n%)
+'           0 Double value = (8b) data
+'           1 Function = (1b)function no.,(2b)priority,(1b)no. of parameters
+'           2 Task operator = (1b) task type,(2b) task priority
+'           3 Axis variable = (1b) 0=x 1=y
+'           4 Variable      = (8b) variable name
+'           5 Separator     = (1b) 1=, 2=( 3=) (stop of command ..)
+SHARED Process AS STRING, eqncom() AS STRING
+
+'Get the code byte
+a1$ = MID$(eq$, (n% - 1) * 9 + 1, 9)
+'Get the definer byte
+d1% = ASC(LEFT$(a1$, 1))
+
+'Get data bytes
+d1$ = RIGHT$(a1$, 8)
+
+'Set result according to definer
+SELECT CASE d1%
+    CASE 0  'Double value
+    a1$ = c.nospc$(STR$(CVD(d1$)))
+    CASE 1  'Function
+    a1$ = screen.word$(eqncom(ASC(LEFT$(d1$, 1))), 1, p1$, p2$)
+    CASE 2  'Task operator
+    a2% = ASC(LEFT$(d1$, 1))
+        SELECT CASE a2%
+        CASE 1
+        a1$ = "-"   'Two's complement
+        CASE 2
+        a1$ = "+"   'Positify
+        CASE 3
+        a1$ = "-"   'Subtract
+        CASE 4
+        a1$ = "+"   'Add
+        CASE 5
+        a1$ = "*"   'Mutiply
+        CASE 6
+        a1$ = "/"   'Divide
+        CASE 7
+        a1$ = "\"   'Integer divide
+        CASE 8
+        a1$ = "%"   'Modulus
+        CASE 9
+        a1$ = "&"   'Integered AND
+        CASE 10
+        a1$ = "^"   'Power
+        CASE ELSE
+        END SELECT
+    CASE 3  'axis variable
+    a2% = ASC(LEFT$(d1$, 1))
+    IF (a2% = 0) THEN a1$ = "x"
+    IF (a2% = 1) THEN a1$ = "y"
+    CASE 4  'Variable
+    a1$ = d1$
+    CASE 5  'Separators
+    a2% = ASC(LEFT$(d1$, 1))
+        SELECT CASE a2%
+        CASE 1
+        a1$ = ","
+        CASE 2
+        a1$ = "("
+        CASE 3
+        a1$ = ")"
+        CASE ELSE
+        END SELECT
+CASE ELSE
+END SELECT
+
+IF (a1$ = "") THEN Process = Process + CHR$(6)
+eqn.unassemble$ = a1$
+END FUNCTION
+
+FUNCTION eqn.unassembles$ (eq$, s%)
+a1$ = ""
+leng% = LEN(eq$) \ 9
+FOR i% = 1 TO leng%
+a1$ = a1$ + eqn.unassemble$(eq$, i%)
+a2$ = MID$(eq$, 1 + (i% - 1) * 9, 1)
+a3$ = MID$(eq$, 3 + (i% - 1) * 9, 2)
+IF (s% > 0 AND (a2$ = CHR$(1) OR a2$ = CHR$(2))) THEN a1$ = a1$ + "<" + LTRIM$(STR$(CVI(a3$))) + ">"
+NEXT
+eqn.unassembles$ = a1$
+END FUNCTION
+
+SUB mouse.end2
+SHARED Jerry AS mouse
+mem1& = (Jerry.xpos + Jerry.ypos * 80) * 2
+DEF SEG = &HB800
+POKE mem1&, PEEK(5000)
+POKE mem1& + 1, PEEK(5001)
+DEF SEG
+END SUB
+
+SUB mouse.hide
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 22
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+FUNCTION mouse.init%
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$)
+CALL absolute(mem1&)
+DEF SEG = &H100
+IF (PEEK(0) = 255 AND PEEK(1) = 255) THEN a1% = 1
+DEF SEG
+mouse.init% = a1%
+END FUNCTION
+
+SUB mouse.loadprog
+SHARED mouse$
+CLS                          'Load ASM Program to mouse$
+OPEN "B", #1, "mouse.dll"
+FOR i = 1 TO LOF(1)
+SEEK #1, i
+k$ = INPUT$(1, #1)
+mouse$ = mouse$ + k$
+NEXT
+CLOSE #1
+END SUB
+
+SUB mouse.put (x&, y&)
+SHARED mouse$
+x& = x& * 8
+y& = y& * 8
+DEF SEG = &H101
+POKE 0, x& MOD 256
+POKE 1, x& \ 256
+POKE 2, y& MOD 256
+POKE 3, y& \ 256
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 66
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+SUB mouse.relativestatus
+SHARED Jerry AS mouse
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 117
+CALL absolute(mem1&)
+DEF SEG = &H100
+a1% = PEEK(0)
+Jerry.left = a1% AND 1
+Jerry.right = (a1% AND 2) \ 2
+a1& = PEEK(2)
+a2& = PEEK(3)
+Jerry.xpos = a2& * 256 + a1&
+IF (Jerry.xpos AND &H8000 = &H8000) THEN Jerry.xpos = -1 * (NOT (Jerry.xpos) + 1)
+Jerry.xpos = Jerry.xpos \ 2
+a1& = PEEK(4)
+a2& = PEEK(5)
+Jerry.ypos = a2& * 256 + a1&
+IF (Jerry.ypos AND &H8000 = &H8000) THEN Jerry.ypos = -1 * (NOT (Jerry.ypos) + 1)
+DEF SEG
+END SUB
+
+SUB mouse.setrange (x1%, y1%, x2%, y2%)
+SHARED mouse$
+DEF SEG = &H101
+POKE 1, 0'x1% MOD 256
+POKE 0, 0' x1% \ 256
+POKE 3, 200'x2% MOD 256
+POKE 2, 0'x2% \ 256
+POKE 5, 0'y1% MOD 256
+POKE 4, 0'y1% \ 256
+POKE 7, 100'y2% MOD 256
+POKE 6, 0'y2% \ 256
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 28
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+SUB mouse.show
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 16
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+SUB mouse.show2
+SHARED Jerry AS mouse, k$
+mouse.status
+IF (Jerry.virtualattrib > 0) THEN
+IF (Jerry.oldleft <> Jerry.left OR Jerry.oldright <> Jerry.right) THEN
+at% = Jerry.virtualattrib
+wr% = at% AND &HF
+IF (Jerry.left = 1) THEN wr% = (wr% * 2) AND &HF
+wr1% = at% AND &HF0
+IF (Jerry.right = 1) THEN wr1% = (wr1% * 2) AND &HF0
+wr% = wr1% + wr%
+IF (Jerry.oldxpos = Jerry.xpos AND Jerry.oldypos = Jerry.ypos) THEN
+DEF SEG = &HB800
+mem1& = (Jerry.ypos * 80 + Jerry.xpos) * 2 + 1
+POKE mem1&, wr%
+DEF SEG
+END IF
+Jerry.oldleft = Jerry.left
+Jerry.oldright = Jerry.right
+Jerry.mouseattrib = wr%
+END IF
+END IF
+IF (Jerry.oldxpos <> Jerry.xpos OR Jerry.oldypos <> Jerry.ypos OR Jerry.oldmouseattrib <> Jerry.mouseattrib OR Jerry.oldmousetype <> Jerry.mousetype) THEN
+DEF SEG = &HB800
+mem1& = (Jerry.oldypos * 80 + Jerry.oldxpos) * 2
+POKE mem1&, PEEK(5000)
+POKE mem1& + 1, PEEK(5001)
+mem1& = (Jerry.ypos * 80 + Jerry.xpos) * 2
+POKE 5000, PEEK(mem1&)
+POKE 5001, PEEK(mem1& + 1)
+POKE mem1&, Jerry.mousetype
+POKE mem1& + 1, Jerry.mouseattrib
+Jerry.oldypos = Jerry.ypos
+Jerry.oldxpos = Jerry.xpos
+Jerry.oldmouseattrib = Jerry.mouseattrib
+Jerry.oldmousetype = Jerry.mousetype
+DEF SEG
+END IF
+END SUB
+
+SUB mouse.show3
+SHARED Jerry AS mouse
+mouse.status
+IF (Jerry.oldxpos <> Jerry.xpos OR Jerry.oldypos <> Jerry.ypos) THEN
+DEF SEG = &HB800
+mem1& = (Jerry.oldypos * 80 + Jerry.oldxpos) * 2
+POKE mem1&, Jerry.mousetype
+POKE mem1& + 1, NOT (Jerry.mouseattrib)
+mem1& = (Jerry.ypos * 80 + Jerry.xpos) * 2
+Jerry.mousetype = PEEK(mem1&)
+Jerry.mouseattrib = NOT (PEEK(mem1& + 1))
+POKE mem1&, Jerry.mousetype
+POKE mem1& + 1, Jerry.mouseattrib
+Jerry.oldypos = Jerry.ypos
+Jerry.oldxpos = Jerry.xpos
+DEF SEG
+END IF
+END SUB
+
+SUB mouse.start2
+SHARED Jerry AS mouse
+mem1& = (Jerry.xpos + Jerry.ypos * 80) * 2
+DEF SEG = &HB800
+POKE 5000, PEEK(mem1&)
+POKE 5001, PEEK(mem1& + 1)
+DEF SEG
+END SUB
+
+SUB mouse.start3
+SHARED Jerry AS mouse
+DEF SEG = &HB800
+mem1& = (Jerry.oldypos * 80 + Jerry.oldxpos) * 2
+Jerry.mousetype = PEEK(mem1&)
+Jerry.mouseattrib = NOT (PEEK(mem1& + 1))
+DEF SEG
+END SUB
+
+SUB mouse.status
+SHARED Jerry AS mouse
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 89
+CALL absolute(mem1&)
+DEF SEG = &H100
+a1% = PEEK(0)
+Jerry.left = a1% AND 1
+Jerry.right = (a1% AND 2) \ 2
+a1& = PEEK(2)
+a2& = PEEK(3)
+Jerry.xpos = a2& * 256 + a1&
+a1& = PEEK(4)
+a2& = PEEK(5)
+Jerry.ypos = a2& * 256 + a1&
+DEF SEG
+END SUB
+
+SUB mouse.writeat2 (char%, attr%)
+SHARED Jerry AS mouse
+DEF SEG = &HB800
+POKE 5000, char%
+POKE 5001, attr%
+DEF SEG
+END SUB
+
+SUB mouse.writeat3 (char%, attr%)
+SHARED Jerry AS mouse
+Jerry.mousetype = char%
+Jerry.mouseattrib = NOT (attr%)
+END SUB
+
+SUB screen.command (s$)               'Process commands
+SHARED Lastcharpoint AS pixel
+SHARED graph1 AS graph
+SHARED comments() AS STRING, commentno%
+SHARED Equation  AS STRING, CONST.separators AS STRING
+SHARED asgap%, drawcolour%, Process AS STRING
+s1$ = LCASE$(s$)
+'get the command
+CONST.separators = " :;,.<>={[]}|+-\/*()%^"
+c1$ = screen.word$(s1$, 1, p1$, p2$)
+'param error
+a1$ = ""
+a2$ = " "
+GOSUB parerr
+'command param correct
+SELECT CASE c1$
+CASE "graph"         'GRAPH cl1%,backcl%,gap%
+        'par error
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = ","
+        GOSUB parerr
+        'par1 correct
+        w2$ = screen.word$(s1$, 3, p1$, p2$)
+        a1$ = ","
+        a2$ = ","
+        GOSUB parerr
+        'par2 correct
+        w3$ = screen.word$(s1$, 4, p1$, p2$)
+        a1$ = ","
+        a2$ = " "
+        GOSUB parerr
+        'par3 correct
+        'All correct
+        graph1.clr = INT(VAL(w1$))
+        graph1.backclr = INT(VAL(w2$))
+        IF (INT(VAL(w3$)) <> 0) THEN graph1.gap = INT(VAL(w3$)) ELSE Process = Process + CHR$(27)
+        screen.drawaxis
+        screen.error
+CASE "clear"
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = " "
+        GOSUB parerr
+        SELECT CASE w1$
+      
+        CASE "text"
+        VIEW SCREEN (textslimitx1, textslimity1)-(textslimitx2, textslimity2)
+        CLS
+        VIEW
+        Lastcharpoint.x = textlimitx1
+        Lastcharpoint.y = textlimity1
+      
+        CASE "graph"
+        screen.drawaxis
+        CASE ELSE
+        Process = Process + CHR$(21)
+        screen.error
+        GOTO command1
+        END SELECT
+CASE "comment" 'Set a comment to save to file
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = " "
+        GOSUB parerr
+        SELECT CASE w1$
+      
+        CASE "set"
+        IF (commentno% > UBOUND(comments)) THEN
+        Process = Process + CHR$(22)
+        screen.error
+        GOTO command1
+        ELSE
+        comments(commentno%) = screen.input$("Comment" + STR$(commentno%) + ">", 4, 50)
+        commentno% = commentno% + 1
+        END IF
+      
+        CASE "clear"
+        FOR lv1% = 1 TO UBOUND(comments)
+        comments(lv1%) = ""
+        NEXT
+        commentno% = 1
+      
+        CASE "clearspecific"
+        c1% = VAL(screen.input$("Comment no.>", 4, 50))
+        comments(c1%) = ""
+      
+        CASE "setspecific"
+        c1% = VAL(screen.input$("Comment no.>", 4, 50))
+        comments(c1%) = screen.input$("Comment" + STR$(commentno%) + ">", 4, 50)
+        CASE ELSE
+        Process = Process + CHR$(22)
+        screen.error
+        GOTO command1
+        END SELECT
+CASE "equation"      'EQUATION equation
+        Equation = screen.input$("EQUATION >>", 13, 50)
+CASE "setvar"  'set variables to x or yaxis
+        'par error
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = ","
+        GOSUB parerr
+        'par1 correct
+        w1$ = screen.word$(s1$, 3, p1$, p2$)
+        a1$ = ","
+        a2$ = " "
+        GOSUB parerr
+        'par2 correct
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        w2$ = screen.word$(s1$, 3, p1$, p2$)
+        eqn.setvar w1$, w2$
+CASE "asgap"
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        SELECT CASE w1$
+      
+        CASE "on"
+        asgap% = 1
+      
+        CASE "off"
+        asgap% = 0
+      
+        CASE ""
+        asgap% = (asgap% + 1) MOD 2
+        CASE ELSE
+        GOSUB parerr
+        END SELECT
+
+
+CASE "draw"
+        drawcolour% = VAL(screen.word$(s1$, 2, p1$, p2$))
+        eqn.draw
+'CASE "save"    'Save to file graph.gra(addressed file)
+CASE "exit"
+mouse.hide
+CLS
+mouse.show
+c.dispstring CHR$(0), 0, 0, 0, 0, 0, 0
+c.dispstring "Power Graph Generator", Lastcharpoint.x, Lastcharpoint.y, 9, 10, 1, 1
+c.dispstring "", Lastcharpoint.x, Lastcharpoint.y, 9, 10, 1, 1
+c.dispstring "", Lastcharpoint.x, Lastcharpoint.y, 9, 10, 1, 1
+c.dispstring "Designed by:", Lastcharpoint.x, Lastcharpoint.y, 7, 10, 1, 1
+c.dispstring "Subhajit Sahu", Lastcharpoint.x, Lastcharpoint.y, 7, 10, 1, 1
+c.dispstring "[Member of ACM]", Lastcharpoint.x, Lastcharpoint.y, 7, 10, 1, 1
+c.dispstring "", Lastcharpoint.x, Lastcharpoint.y, 9, 10, 1, 1
+c.dispstring "Created using Microsoft QuickBasic 4.0", Lastcharpoint.x, Lastcharpoint.y, 6, 10, 1, 1
+k$ = INPUT$(1)
+SYSTEM
+
+
+
+CASE ELSE
+Process = Process + CHR$(23)
+screen.error
+END SELECT
+
+GOTO command1
+
+parerr:
+IF (p1$ <> a1$ OR p2$ <> a2$) THEN
+Process = Process + CHR$(24)
+screen.error
+GOTO command1
+END IF
+RETURN
+
+command1:
+END SUB
+
+SUB screen.drawaxis
+SHARED graph1 AS graph
+cl% = graph1.clr
+clr% = graph1.backclr
+gap% = graph1.gap
+mouse.hide
+VIEW SCREEN (screenlimitx1, screenlimity1)-(screenlimitx2, screenlimity2)
+CLS
+PAINT (midx, midy), clr%
+LINE (midx - 1, 0)-(midx + 1, 500), (cl% + 1) MOD 16, BF
+LINE (0, midy - 1)-(640, midy + 1), (cl% + 1) MOD 16, BF
+cl1% = (cl% + 2) MOD 16
+FOR i% = midx + gap% TO 640 STEP gap%
+LINE (i%, 0)-(i%, 500), cl%
+LINE (i%, midy - 2)-(i%, midy + 2), cl1%
+NEXT
+FOR i% = midx - gap% TO 0 STEP -gap%
+LINE (i%, 0)-(i%, 500), cl%
+LINE (i%, midy - 2)-(i%, midy + 2), cl1%
+NEXT
+FOR i% = midy + gap% TO 500 STEP gap%
+LINE (0, i%)-(640, i%), cl%
+LINE (midx - 2, i%)-(midx + 2, i%), cl1%
+NEXT
+FOR i% = midy - gap% TO 0 STEP -gap%
+LINE (0, i%)-(640, i%), cl%
+LINE (midx - 2, i%)-(midx + 2, i%), cl1%
+NEXT
+VIEW
+mouse.show
+END SUB
+
+SUB screen.error
+SHARED Process AS STRING, eqncom() AS STRING
+
+c.clearkey
+fr% = FREEFILE
+OPEN "B", #fr%, "check.ini"
+IF (LOF(fr%) = 0 OR LOF(fr%) > 10000) THEN
+CLOSE #fr%
+OPEN "O", #fr%, "check.ini"
+ELSE
+CLOSE #fr%
+OPEN "A", #fr%, "check.ini"
+END IF
+PRINT #fr%, "========================================="
+er% = 1
+i% = 1
+leng% = LEN(Process)
+DO WHILE i% <= leng%
+    a1% = ASC(MID$(Process, i%, 1))
+    screen.msg "Error" + STR$(er%), 10
+    PRINT #fr%, "Error " + STR$(er%)
+    SELECT CASE a1%
+        CASE 1
+        a2$ = MID$(Process, i% + 1, 1)
+        a2$ = "Illegal character `" + a2$ + "' used in equation."
+        i% = i% + 2
+        CASE 2
+        a2$ = "Brackets not properly set in equation."
+        i% = i% + 1
+        CASE 3
+        a3% = ASC(MID$(Process, i% + 1, 1))
+        a2$ = "Variable `" + MID$(Process, i% + 2, a3%) + "' is more than 8 characters.Error!"
+        i% = i% + 2 + a3%
+        CASE 4
+        a2$ = "Internal Equation Recognition Error occured."
+        i% = i% + 1
+        CASE 5
+        a2$ = "Equation contains more than one `=' !"
+        i% = i% + 1
+        CASE 6
+        a2$ = "Equation cannot be unassembled. Error!"
+        i% = i% + 1
+        CASE 7
+        a3$ = MID$(Process, i% + 2, ASC(MID$(Process, i% + 1, 1)))
+        a2$ = "Urecognizable Operator" + a3$
+        i% = i% + 2 + ASC(MID$(Process, i% + 1, 1))
+        CASE 8
+        a2$ = "No X or Y on L.H.S. of Equation. Error!"
+        i% = i% + 1
+        CASE 9
+        a2$ = "Equals sign not used properly. Error!"
+        i% = i% + 1
+        CASE 10
+        a2$ = "No operation in Equation. Error!"
+        i% = i% + 1
+        CASE 11
+        a2$ = "Null brackets not allowed. Error!"
+        i% = i% + 1
+        CASE 12
+        a2$ = "Super complex usage of operators. Error!"
+        i% = i% + 1
+        CASE 13
+        a2$ = "Twice simultaneous usage of operator L2. Error!"
+        i% = i% + 1
+        CASE 14
+        a2$ = "Twice simultaneous usage of operator L1. Error!"
+        i% = i% + 1
+        CASE 15
+        a2$ = "L1 operator used as L2 operator. Error!"
+        i% = i% + 1
+        CASE 16
+        a3% = ASC(MID$(Process, i% + 1, 1))
+        a2$ = UCASE$(screen.word$(eqncom(a3%), 1, p1$, p2$))
+        screen.msg a2$ + " Command Error!  ", 11
+        screen.msg a2$ + " Format:   ", 11
+        a2$ = eqn.comhelp$(a3%)
+        i% = i% + 2
+        CASE 17
+        a2$ = "Internal Error During Processing Functions!"
+        i% = i% + 1
+        CASE 18
+        screen.msg a2$ + "Invalid Command:  ", 11
+        a3% = ASC(MID$(Process, i% + 1, 1))
+        a2$ = MID$(Process, i% + 2, a3%)
+        a2$ = "Invalid: " + a2$
+        i% = i% + 2 + a3%
+        CASE 19
+        a2$ = "Illegal Operand used in Equation. Error!"
+        i% = i% + 1
+        CASE 20
+        a2$ = "Internal Evaluation Error!"
+        i% = i% + 1
+        CASE 21
+        a2$ = "CLEAR Command Error!"
+        i% = i% + 1
+        CASE 22
+        a2$ = "COMMENT Command Error!"
+        i% = i% + 1
+        CASE 23
+        a2$ = "Illegal Command!"
+        i% = i% + 1
+        CASE 24
+        a2$ = "Command Parameter Error!"
+        i% = i% + 1
+        CASE 25
+        a2$ = "Using of Same Axis Varible on R.H.S. Error!"
+        i% = i% + 1
+        CASE 26
+        a2$ = "Illegal System of Operators. Error!"
+        i% = i% + 1
+        CASE 27
+        a2$ = "Graph Gap cannot be Zero!"
+        i% = i% + 1
+        CASE 28
+        a2$ = "Variables not set!"
+        i% = i% + 1
+    CASE ELSE
+    END SELECT
+    screen.msg a2$, 11
+    PRINT #fr%, a2$
+    IF (INKEYfx$ = CHR$(esc)) THEN EXIT DO
+    er% = er% + 1
+LOOP
+CLOSE #fr%
+Process = ""
+END SUB
+
+FUNCTION screen.input$ (s$, cl%, leng%)
+SHARED Lastcharpoint AS pixel
+
+xg% = CONST.linegap \ 2
+yg% = CONST.cspace \ 2
+'VIEW SCREEN (textslimitx1, textslimity1)-(textslimitx2, textslimity2)
+cl1% = (cl% + 1) MOD 16
+cl2% = (cl% + 2) MOD 16
+cl3% = (cl% + 3) MOD 16
+c.dispstring s$, Lastcharpoint.x, Lastcharpoint.y, cl%, cl1%, 0, 1
+LINE (Lastcharpoint.x - 5, Lastcharpoint.y - 5)-(630, Lastcharpoint.y + 5), 0, BF
+
+x1% = Lastcharpoint.x
+y1% = Lastcharpoint.y
+ln% = 0
+st$ = ""
+k$ = ""
+DO UNTIL k$ = CHR$(enter)
+        k$ = ""
+        c.clearkey      'clear keyboard buffer
+        WHILE k$ = ""
+        k$ = INKEY$
+        'mouse usage
+        mouse.status
+        screen.mousepos
+        WEND
+        k% = ASC(k$)
+SELECT CASE k%
+CASE esc
+        Lastcharpoint.x = x1%
+        Lastcharpoint.y = y1%
+        st$ = ""
+        c.dispstring SPACE$(ln%), Lastcharpoint.x, Lastcharpoint.y, cl%, 0, 0, 1
+        Lastcharpoint.x = x1%
+        Lastcharpoint.y = y1%
+        c.blinkcursor cl3%, 1, 2
+        ln% = 0
+CASE backspc
+        ln% = ln% - 1
+        IF (ln% >= 0) THEN
+        Lastcharpoint.x = Lastcharpoint.x - CONST.cspace
+        IF (Lastcharpoint.x < textlimitx1) THEN
+        Lastcharpoint.x = textlimitx2
+        Lastcharpoint.y = Lastcharpoint.y - CONST.linegap
+        END IF
+        a1% = Lastcharpoint.x
+        a2% = Lastcharpoint.y
+        c.dispstring " ", Lastcharpoint.x, Lastcharpoint.y, cl%, 0, 0, 1
+        st$ = LEFT$(st$, LEN(st$) - 1)
+        Lastcharpoint.x = a1%
+        Lastcharpoint.y = a2%
+        c.blinkcursor cl1%, 1, 1
+        ELSE
+        c.blinkcursor cl3%, 1, 1
+        ln% = ln% + 1
+        END IF
+CASE IS > 31 AND k% < 127       'some character
+        IF (Lastcharpoint.x < textlimitx2) THEN
+        ln% = ln% + 1
+        IF (ln% > leng%) THEN
+        ln% = ln% - 1
+        c.blinkcursor cl3%, 1, 1
+        ELSE
+        c.dispstring k$, Lastcharpoint.x, Lastcharpoint.y, cl2%, cl1%, 0, 1
+        st$ = st$ + k$
+        END IF
+        ELSE
+        c.blinkcursor cl3%, 1, 1
+        END IF
+CASE ELSE
+END SELECT
+LOOP
+Lastcharpoint.x = textlimitx1
+Lastcharpoint.y = Lastcharpoint.y + CONST.linegap
+IF (Lastcharpoint.y > textlimity2) THEN Lastcharpoint.y = textlimity1
+'VIEW
+screen.input$ = st$
+END FUNCTION
+
+SUB screen.mousepos
+SHARED Jerry AS mouse, Lastcharpoint AS pixel
+SHARED asgap%, graph1 AS graph
+IF (Jerry.xpos <> Jerry.oldxpos OR Jerry.ypos <> Jerry.oldypos) THEN
+x% = Jerry.xpos - midx
+y% = midy - Jerry.ypos
+IF (asgap% = 1) THEN
+x% = x% \ graph1.gap
+y% = y% \ graph1.gap
+END IF
+x$ = STR$(x%)
+y$ = STR$(y%)
+IF (Jerry.xpos < screenlimitx1 OR Jerry.xpos > screenlimitx2) THEN x$ = "ZZZZ"
+IF (Jerry.ypos < screenlimity1 OR Jerry.ypos > screenlimity2) THEN y$ = "ZZZZ"
+x$ = SPACE$(4 - LEN(x$)) + x$
+y$ = SPACE$(4 - LEN(y$)) + y$
+x$ = x$ + ":" + y$
+x1% = Lastcharpoint.x
+y1% = Lastcharpoint.y
+c.dispstring x$, 540, 475, 9, 0, 0, 1
+Lastcharpoint.x = x1%
+Lastcharpoint.y = y1%
+END IF
+END SUB
+
+SUB screen.msg (s$, cl%)
+SHARED Lastcharpoint AS pixel
+s1$ = s$ + SPACE$(80 - LEN(s$))
+cl1% = (cl% + 1) MOD 16
+x1% = 15
+y1% = 475
+SWAP Lastcharpoint.x, x1%
+SWAP Lastcharpoint.y, y1%
+LINE (10, 470)-(530, 480), 0, BF
+c.dispstring s$, Lastcharpoint.x, Lastcharpoint.y, cl%, cl1%, 0, 1
+SWAP Lastcharpoint.x, x1%
+SWAP Lastcharpoint.y, y1%
+END SUB
+
+FUNCTION screen.word$ (s$, no%, s1$, s2$)
+SHARED CONST.separators AS STRING
+s1$ = ""
+s2$ = ""
+ss$ = c.removetab$(s$) + " "
+w1% = 0
+st% = 1
+leng% = LEN(ss$)
+FOR i% = 1 TO LEN(ss$)
+a$ = MID$(ss$, i%, 1)
+    'check if end of word
+    IF (INSTR(CONST.separators, a$)) THEN a1% = 1 ELSE a1% = 0
+    IF (INSTR(CONST.separators, MID$(ss$, st%, 1))) THEN
+    a1% = 0
+    st% = st% + 1
+    END IF
+   
+IF (a1% = 1) THEN
+w1% = w1% + 1
+        'report for word
+        IF (w1% = no%) THEN
+        st$ = MID$(ss$, st%, i% - st%)
+        IF (st$ = "") THEN
+            no% = no% + 1
+            st% = st% + 1
+        END IF
+        IF (w1% <> 1) THEN
+            a1% = 1
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, st% - a1%, 1)) AND (st% - a1% > 0))
+            s1$ = s1$ + MID$(ss$, st% - a1%, 1)
+            a1% = a1% + 1
+            LOOP
+            s1$ = c.reverse$(s1$)
+        ELSE
+        IF (st% > 1) THEN s1$ = LEFT$(ss$, st% - 1) ELSE s1$ = ""
+        END IF
+            a1% = 0
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, i% + a1%, 1)) AND (i% + a1% <= leng%))
+            s2$ = s2$ + MID$(ss$, i% + a1%, 1)
+            a1% = a1% + 1
+            LOOP
+        IF (w1% = no%) THEN EXIT FOR
+        ELSE
+        st% = i% + 1
+        END IF
+END IF
+NEXT
+screen.word$ = st$
+END FUNCTION
+

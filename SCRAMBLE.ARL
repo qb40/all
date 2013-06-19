@@ -1,0 +1,148 @@
+'®¯°²³´µ¶·¸¹º»¼½¾¿Á À Á Â ÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâðñòóôõö÷øùúûüýþÿ
+
+DECLARE SUB Worddesign ()
+DECLARE FUNCTION Scramble$ (what$)
+DECLARE FUNCTION Spacepad$ (what$)
+
+
+
+DIM SHARED Words$(10)
+TotalWords% = 16
+chance! = .1
+ask% = 0
+RANDOMIZE TIMER
+FOR i% = 1 TO TotalWords%
+IF (ask% < 10 AND (RND >= .5 + chance! OR TotalWords% - i% - 1 <= 10 - ask%)) THEN
+READ Words$(ask%)
+ask% = ask% + 1
+ELSE
+READ xxx$
+END IF
+NEXT
+RANDOMIZE TIMER
+ark! = UBOUND(Words$) - 1
+FOR i% = 1 TO UBOUND(Words$) \ 2 + 1
+SWAP Words$(RND * ark!), Words$(RND * ark!)
+NEXT
+
+
+CLS
+COLOR 3
+PRINT "ÜÜÜÜÜÜÜÜÜÜÜÜÜÜÜ"
+COLOR 11
+PRINT "Þ Word Jungle Ý"
+COLOR 3
+PRINT "ßßßßßßßßßßßßßßß"
+PRINT
+PRINT
+PRINT
+PRINT
+COLOR 2
+PRINT "°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°"
+COLOR 10
+PRINT "° Unscramble the word given below: °"
+COLOR 2
+PRINT "°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°°"
+PRINT ""
+COLOR 1
+PRINT "ÚÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄ¿"
+COLOR 9
+PRINT "³                                     ³"
+COLOR 1
+PRINT "ÀÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÄÙ"
+PRINT
+PRINT
+PRINT
+COLOR 6
+PRINT "ððððððððððððððððððððððððððððððððððððððð"
+PRINT
+PRINT "ððððððððððððððððððððððððððððððððððððððð"
+PRINT
+PRINT
+PRINT "Score :"
+
+FOR GameLoop% = 0 TO 9
+Word$ = UCASE$(Words$(GameLoop%))
+GOSUB Bekariya
+GOSUB inpute
+GOSUB score
+NEXT
+CLS
+PRINT "Your total score = "; Scores%
+k$ = INPUT$(1)
+SYSTEM
+
+'------------
+Bekariya:
+LOCATE 19, 2
+PRINT SPACE$(79);
+LOCATE 13, 3
+PRINT SPACE$(36);
+FOR rock% = 0 TO 2
+LOCATE 13, 3
+PRINT Spacepad$(STRING$(LEN(Word$), 176 + rock%));
+SOUND 21000, 1
+NEXT
+FOR rock% = 0 TO 1
+LOCATE 13, 3
+PRINT Spacepad$(STRING$(LEN(Word$), 177 - rock%));
+SOUND 21000, 1
+NEXT
+LOCATE 13, 3
+PRINT Spacepad$(Scramble$(Word$));
+RETURN
+
+inpute:
+tries% = 5
+win% = 0
+DO
+LOCATE 19, 2
+PRINT SPACE$(79);
+LOCATE 19, 2
+LINE INPUT User$
+tries% = tries% - 1
+IF (UCASE$(User$) <> Word$) THEN
+LOCATE 22, 1
+PRINT tries%; " tries left.";
+xxx$ = INPUT$(1)
+LOCATE 22, 1
+PRINT SPACE$(40);
+ELSE
+win% = 1
+END IF
+LOOP WHILE tries% > 0 AND UCASE$(User$) <> Word$
+RETURN
+
+score:
+IF (win% = 1) THEN Scores% = Scores% + (tries% + 1) * 200
+LOCATE 23, 9
+PRINT Scores%;
+RETURN
+
+'------------
+DATA "hack","lick","hate","robber","dusk","dawn","joystick","woman"
+DATA "island","beef","cowboy","milk","cheese","butter","name","hang"
+DATA "keen","reek","kill","house","uncle","hedge","rocks","mass"
+DATA "scan","team","ware","wagon","truck","jeep","coral","impossible"
+
+FUNCTION Scramble$ (what$)
+DO
+RANDOMIZE TIMER
+FOR i% = 1 TO LEN(what$)
+IF (i% = 1) THEN rock% = 0 ELSE rock% = (CINT(RND * 1000)) MOD i%
+ask$ = LEFT$(ask$, rock%) + MID$(what$, i%, 1) + RIGHT$(ask$, i% - rock% - 1)
+NEXT
+LOOP WHILE ask$ = what$
+Scramble$ = ask$
+END FUNCTION
+
+FUNCTION Spacepad$ (what$)
+FOR i% = 1 TO LEN(what$)
+ask$ = ask$ + MID$(what$, i%, 1) + " "
+NEXT
+Spacepad$ = ask$
+END FUNCTION
+
+SUB Worddesign
+END SUB
+

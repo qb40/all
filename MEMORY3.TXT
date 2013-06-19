@@ -1,0 +1,68 @@
+'=============Ports
+CONST memory1 = &H0, memory2 = &HCF7
+CONST pcibus1 = &H0, pcibus2 = &HCF7
+CONST motherboardA1 = &H10, motherboardA2 = &H1F
+CONST prgintrptctrl1 = &H20, prgintrptctrl2 = &H21
+const motherboardB1=&H24,motherboardB2=&h25
+const motherboardC1=&h28,motherboardC2=&h29
+const motherboardD1=&h2C,motherboardD2=&h2D
+const motherboardE1=&h2E,motherboardE2=&h2F
+const motherboardF1=&h30,motherboardF2=&h31
+const motherboardG1=&h34,motherboardG2=&h35
+const motherboardH1=&h38,motherboardH2=&h39
+const motherboardI1=&h3C,motherboardI2=&h3D
+const systemtimer1=&h40,systemtimer2=&h43
+const motherboardJ1=&h4E,motherboardJ2=&h4F
+const motherboardK1=&h50,motherboardK2=&h53
+const keyboard1=&h60,0x00000060	Standard 101/102-Key or Microsoft Natural PS/2 Keyboard	OK
+0x00000061-0x00000061	System speaker	OK
+0x00000062-0x00000062	Microsoft ACPI-Compliant Embedded Controller	OK
+0x00000064-0x00000064	Standard 101/102-Key or Microsoft Natural PS/2 Keyboard	OK
+0x00000066-0x00000066	Microsoft ACPI-Compliant Embedded Controller	OK
+0x00000070-0x00000071	System CMOS/real time clock	OK
+0x00000072-0x00000077	Motherboard resources	OK
+0x00000080-0x0000008F	Direct memory access controller	OK
+0x00000090-0x0000009F	Motherboard resources	OK
+0x000000A0-0x000000A1	Programmable interrupt controller	OK
+0x000000A4-0x000000A5	Motherboard resources	OK
+0x000000A8-0x000000A9	Motherboard resources	OK
+0x000000AC-0x000000AD	Motherboard resources	OK
+0x000000B0-0x000000B5	Motherboard resources	OK
+0x000000B8-0x000000B9	Motherboard resources	OK
+0x000000BC-0x000000BD	Motherboard resources	OK
+0x000000C0-0x000000DF	Direct memory access controller	OK
+0x000000F0-0x000000F0	Numeric data processor	OK
+0x00000170-0x00000177	Secondary IDE Channel	OK
+0x000001F0-0x000001F7	Primary IDE Channel	OK
+0x00000274-0x00000277	ISAPNP Read Data Port	OK
+0x00000279-0x00000279	ISAPNP Read Data Port	OK
+0x000002F8-0x000002FF	IBM ThinkPad Fast Infrared Port	OK
+0x00000376-0x00000376	Secondary IDE Channel	OK
+0x000003B0-0x000003BB	Intel(R) 82852/82855 GM/GME Graphics Controller	OK
+0x000003BC-0x000003BE	Printer Port (LPT1)	OK
+0x000003C0-0x000003DF	Intel(R) 82852/82855 GM/GME Graphics Controller	OK
+0x000003F0-0x000003F5	Standard floppy disk controller	OK
+0x000003F6-0x000003F6	Primary IDE Channel	OK
+0x000003F7-0x000003F7	Standard floppy disk controller	OK
+0x000003F8-0x000003FF	Communications Port (COM1)	OK
+0x000004D0-0x000004D1	Programmable interrupt controller	OK
+0x00000A79-0x00000A79	ISAPNP Read Data Port	OK
+0x00000D00-0x0000FFFF	PCI bus	OK
+0x00001000-0x0000107F	Motherboard resources	OK
+0x00001180-0x000011BF	Motherboard resources	OK
+0x000015E0-0x000015EF	Motherboard resources	OK
+0x00001600-0x0000167F	Motherboard resources	OK
+0x00001800-0x00001807	Intel(R) 82852/82855 GM/GME Graphics Controller	OK
+0x00001810-0x0000181F	Intel(R) 82801DBM Ultra ATA Storage Controller - 24CA	OK
+0x00001820-0x0000183F	Intel(r) 82801DB/DBM USB Universal Host Controller - 24C2	OK
+0x00001840-0x0000185F	Intel(r) 82801DB/DBM USB Universal Host Controller - 24C4	OK
+0x00001860-0x0000187F	Intel(r) 82801DB/DBM USB Universal Host Controller - 24C7	OK
+0x00001880-0x0000189F	Intel(R) 82801DB/DBM SMBus Controller - 24C3	OK
+0x000018C0-0x000018FF	SoundMAX Integrated Digital Audio	OK
+0x00001C00-0x00001CFF	SoundMAX Integrated Digital Audio	OK
+0x00002000-0x0000207F	IBM Integrated 56K Modem	OK
+0x00002400-0x000024FF	IBM Integrated 56K Modem	OK
+0x00007000-0x0000703F	Intel(R) PRO/1000 MT Mobile Connection	OK
+0x0000FE00-0x0000FEFF	Texas Instruments PCI-4510 CardBus Controller	OK
+0x0000FF00-0x0000FFFF	Texas Instruments PCI-4510 CardBus Controller	OK
+

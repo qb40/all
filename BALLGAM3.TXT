@@ -1,0 +1,503 @@
+COMMON SHARED work, add()
+
+DECLARE FUNCTION rnd$ (l%)
+DECLARE FUNCTION nospc$ (a$)
+DECLARE SUB border (clr)
+DECLARE SUB click1 ()
+DECLARE SUB managesize (sz)
+
+
+DECLARE SUB path ()
+DECLARE SUB balls ()   '1-12 13-erase
+DECLARE SUB reflect (strike, rand) '0-xstrike  1-ystrike,rand - random angle
+DECLARE SUB brick (x, y, clr, clr2, clr3, num)
+DECLARE SUB powers (x, y, clr, clr2, clr3, num)
+DECLARE SUB bars ()
+
+'============================Declaring Keys==================================
+CONST false = 0, true = NOT false, pi = 22 / 7
+CONST backspc = 8, enter = 13, htab = 9
+CONST left = 75, right = 77, up = 72, down = 80
+CONST uplt = 71, uprt = 73, dnlt = 79, dnrt = 81
+CONST insert = 82, home = 73, pageup = 71, del = 83, endk = 81, pagedn = 79
+CONST kf1 = 59, kf2 = 60, kf3 = 61, kf4 = 62, kf5 = 63, kf6 = 64, kf7 = 65, kf8 = 66, kf9 = 67, kf10 = 68, kf11 = 133, kf12 = 134
+DEF fnrad (ang) = (ang / 180) * pi
+DEF fnang (rad) = (rad / pi) * 180
+'-----------------------------Keys declared---------------------------------
+DIM SHARED ball(17)
+DIM SHARED brk(660, 8)
+DIM SHARED bar(10)
+
+CLS
+ball(1) = 400
+ball(2) = 400
+ball(3) = 6
+ball(4) = 1
+ball(5) = 10
+ball(6) = 70
+ball(7) = 5
+ball(8) = .1
+ball(9) = 400
+ball(10) = 400
+ball(11) = 23
+ball(12) = 617
+ball(13) = 23
+ball(14) = 457
+ball(15) = .01
+ball(16) = .001
+ball(17) = 0
+
+
+DIM SHARED spotx(0), spoty(0)
+DIM SHARED add(10)
+'========steps
+add(1) = .001
+add(2) = .01
+add(3) = .01
+add(4) = .01
+add(5) = .01
+add(6) = .001
+add(7) = .001
+add(8) = .001
+add(9) = .005
+
+
+RANDOMIZE TIMER
+CLS
+SCREEN 12
+border 1
+managesize 6
+a: path
+balls
+
+
+
+GOTO a
+
+SUB balls
+SHARED work, add(), ball()
+
+x = ball(1)
+y = ball(2)
+clr = ball(4)
+clr2 = ball(5)
+state = ball(3)
+sz = ball(15)
+
+SELECT CASE state
+
+CASE 1
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), rnd$(10), clr
+CASE 2
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+
+CASE 3
+work = work + add(1)
+IF work > 1 THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 5*sz, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr, , , 1
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+CIRCLE (x, y), 4.5 * sz, clr2, , , work
+CIRCLE (x, y), 4 * sz, clr2, , , ABS(work - .33)
+
+CASE 4
+work = work + add(2)
+IF (work > 3) THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 5*sz, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+LINE (x - work * sz, y - work * sz)-(x + work * sz, y + work * sz), clr2, B
+
+CASE 5
+work = work + add(3)
+IF (work > 3) THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 10, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+LINE (x - 2.5 * sz, y - 2.5 * sz)-(x, y - work * sz), clr2
+LINE -(x + 2.5 * sz, y + 2.5 * sz), clr2
+LINE -(x, y + work * sz), clr2
+LINE -(x - 2.5 * sz, y - 2.5 * sz), clr2
+
+CASE 6
+work = work + add(4)
+IF (work > 3) THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 10, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+LINE (x - 2.5 * sz, y + 2.5 * sz)-(x, y - work * sz), clr2
+LINE -(x + 2.5 * sz, y - 2.5 * sz), clr2
+LINE -(x, y + work * sz), clr2
+LINE -(x - 2.5 * sz, y + 2.5 * sz), clr2
+
+CASE 7
+work = work + add(5)
+IF (work > 2.5) THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 10, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+LINE (x - work * sz, y - work * sz)-(x + work * sz, y + work * sz), clr2
+LINE (x - work * sz, y + work * sz)-(x + work * sz, y - work * sz), clr2
+CASE 8
+CIRCLE (x, y), 4.5 * sz, 0
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 3 * sz, 0
+CIRCLE (x, y), 4 * sz, clr
+CIRCLE (x, y), 2 * sz, 0
+CIRCLE (x, y), 2 * sz, clr2
+CIRCLE (x, y), 0, clr
+
+CASE 9
+work = work + add(6)
+IF (work > 1) THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 10, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+x1 = x - 1.5 * work * sz
+y1 = y - 2 * work * sz
+p = work
+LINE (x1, y1 + 4.5 * p * sz)-(x1, y1), clr2
+LINE (x1, y1)-(x1 + 1.5 * p * sz, y1 + 2 * p * sz), clr2
+LINE (x1 + 1.5 * p * sz, y1 + 2 * p * sz)-(x1 + 3 * p * sz, y1), clr2
+LINE (x1 + 3 * p * sz, y1)-(x1 + 3 * p * sz, y1 + 4.5 * p * sz), clr2
+
+CASE 10
+work = work + add(7)
+IF (work > 1) THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 10, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+x1 = x - 1.5 * work
+y1 = y - 2 * work
+p = work
+
+LINE (x1, y1)-(x1 + 3 * p * sz, y1), clr2
+LINE (x1 + 3 * p * sz, y1)-(x1, y1 + 4.5 * p * sz), clr2
+LINE (x1, y1 + 4.5 * p * sz)-(x1 + 3 * p * sz, y1 + 4.5 * p * sz), clr2
+
+CASE 11
+work = work + add(8)
+IF (work > 1) THEN work = 0
+'FOR i = 0 TO 1 STEP .01
+'CIRCLE (x, y), 10, 0, , , i
+'NEXT
+CIRCLE (x, y), 5 * sz, clr
+CIRCLE (x, y), 4.5 * sz, clr
+CIRCLE (x, y), 4 * sz, clr
+PAINT (x, y), 0, clr
+x1 = x - 1.5 * work
+y1 = y - 2 * work
+p = work
+LINE (x1 + 3 * p, y1)-(x1, y1), clr2
+LINE (x1, y1)-(x1, y1 + 4.5 * p), clr2
+LINE (x1, y1 + 4.5 * p)-(x1 + 3 * p, y1 + 4.5 * p), clr2
+LINE (x1, y1 + 2 * p)-(x1 + 3 * p, y1 + 2 * p), clr2
+CASE 12
+work = work + add(9)
+IF (work > 6) THEN work = 0
+CIRCLE (x, y), 5 * sz, 0
+CIRCLE (x, y), 4.5 * sz, 0
+CIRCLE (x, y), 4 * sz, 0
+CIRCLE (x, y), 4 * sz, clr, ABS(work - 3), work
+CIRCLE (x, y), 2 * sz, clr2, ABS(work - 3), work
+CASE ELSE
+CIRCLE (x, y), 11, 0
+CIRCLE (x, y), 12, 0
+END SELECT
+CIRCLE (x, y), 5 * sz, 0
+CIRCLE (x, y), 5.5 * sz, 0
+CIRCLE (x, y), 6 * sz, 0
+END SUB
+
+SUB bars
+SHARED bar()
+
+
+END SUB
+
+SUB border (clr)
+FOR i = 0 TO 640 STEP 24
+LINE (i, 0)-(i + 20, 10), clr, BF
+LINE (i, 470)-(i + 20, 480), clr, BF
+NEXT
+FOR i = 0 TO 480 STEP 24
+LINE (0, i)-(10, i + 20), clr, BF
+LINE (630, i)-(640, i + 20), clr, BF
+NEXT
+END SUB
+
+SUB brick (x, y, clr, clr2, clr3, num)
+SELECT CASE num
+CASE 1
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, BF
+CASE 2
+LINE (x - 9, y - 4)-(x + 9, y + 4), clr, BF
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr2, B
+CASE 3
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, BF
+LINE (x - 5, y - 2.5)-(x + 5, y + 2.5), clr2, BF
+CASE 4
+LINE (x - 9, y - 4)-(x + 9, y + 4), clr2, BF
+LINE (x - 5, y - 2.5)-(x + 5, y + 2.5), clr3, BF
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, B
+CASE 5
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, BF
+FOR i = -9 TO 8 STEP 2
+LINE (x + i, y - 1)-(x + i + 1, y), clr2
+LINE -(x + i, y + 1), clr2
+NEXT
+CASE 6
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, BF
+FOR i = -9 TO 8 STEP 2
+LINE (x + i, y - 3)-(x + i + 1, y), clr2
+LINE -(x + i, y + 3), clr2
+NEXT
+CASE 7
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, BF
+FOR i = -9 TO 8 STEP 4
+LINE (x + i, y - 2)-(x + i + 1, y), clr2
+LINE -(x + i, y + 2), clr2
+NEXT
+CASE 8
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, BF
+LINE (x - 10, y + 5)-(x + 10, y + 5), clr3
+LINE (x + 10, y + 5)-(x + 10, y - 5), clr3
+LINE (x - 10, y - 5)-(x + 10, y - 5), clr2
+LINE (x - 10, y - 4)-(x + 10, y - 4), clr2
+LINE (x - 10, y - 5)-(x - 10, y + 5), clr2
+LINE (x - 9, y - 5)-(x - 9, y + 5), clr2
+CASE 9
+LINE (x - 10, y - 5)-(x + 10, y + 5), clr, BF
+LINE (x + 10, y + 5)-(x - 10, y - 5), clr2
+LINE (x - 10, y + 5)-(x + 10, y - 5), clr2
+CASE 10
+FOR i = -10 TO 5
+LINE (x + i, y - 5)-(x + i + 5, y), clr
+LINE -(x + i, y + 5), clr
+NEXT
+CASE 11
+FOR i = -10 TO 5
+IF (i MOD 2 = 0) THEN
+LINE (x + i, y - 5)-(x + i + 5, y), clr
+LINE -(x + i, y + 5), clr
+ELSE
+LINE (x + i, y - 5)-(x + i + 5, y), clr2
+LINE -(x + i, y + 5), clr2
+END IF
+NEXT
+CASE 12
+FOR i = -10 TO 5
+IF (i MOD 2 = 0) THEN
+LINE (x + i, y - 5)-(x + i + 5, y), clr
+LINE -(x + i, y + 5), clr
+ELSE
+LINE (x + i, y - 5)-(x + i + 5, y), clr2
+LINE -(x + i, y + 5), clr3
+END IF
+NEXT
+CASE 13
+
+CASE ELSE
+END SELECT
+END SUB
+
+SUB click1
+FOR i% = 5000 TO 9000 STEP 500
+SOUND i%, .05
+NEXT
+FOR i% = 12000 TO 8000 STEP -500
+SOUND i%, .05
+NEXT
+END SUB
+
+SUB managesize (sz)
+SHARED ball()
+ball(15) = sz
+ball(8) = ball(8) * SQR(sz)
+ball(11) = 11 + 6 * sz
+ball(12) = 629 - 6 * sz
+ball(13) = 11 + 6 * sz
+ball(14) = 469 - 6 * sz
+END SUB
+
+FUNCTION nospc$ (a$)
+B$ = ""
+FOR i = 1 TO LEN(a$)
+c$ = MID$(a$, i, 1)
+IF (c$ <> " ") THEN B$ = B$ + c$
+NEXT
+nospc$ = B$
+END FUNCTION
+
+SUB path
+SHARED ball()
+
+ball(6) = ball(6) MOD 360
+
+sph = INT(ball(6) / 90)
+
+
+'................................Reflection
+IF (ball(1) > ball(12)) THEN
+        ball(6) = 360 - ball(6)
+        ball(7) = 0
+        ball(9) = ball(12)
+        ball(10) = ball(2)
+        click1
+ELSEIF (ball(1) < ball(11)) THEN
+        ball(6) = 360 - ball(6)
+        ball(7) = 0
+        ball(9) = ball(11)
+        ball(10) = ball(2)
+        click1
+END IF
+IF (ball(2) > ball(14)) THEN
+        IF (sph = 0) THEN ball(6) = 180 - ball(6) ELSE ball(6) = 540 - ball(6)
+        ball(7) = 0
+        ball(9) = ball(1)
+        ball(10) = ball(14)
+        click1
+ELSEIF (ball(2) < ball(13)) THEN
+        IF (sph = 1) THEN ball(6) = 180 - ball(6) ELSE ball(6) = 540 - ball(6)
+        ball(7) = 0
+        ball(9) = ball(1)
+        ball(10) = ball(13)
+        click1
+END IF
+'..................................................
+
+'...................................Path
+'an = ball(6) MOD 90
+'IF (sph = 1) THEN
+x = SIN(fnrad(ball(6))) * ball(7)
+y = COS(fnrad(ball(6))) * ball(7)
+ball(1) = ball(9) + x
+ball(2) = ball(10) + y
+ball(7) = ball(7) + ball(8)
+'.................................................
+END SUB
+
+SUB powers (x, y, clr, clr2, clr3, num)
+IF (num > 5) THEN
+LINE (x - 6, y - 6)-(x + 6, y + 6), 10, B
+LINE (x - 7, y - 7)-(x + 7, y + 7), 13, B
+LINE (x - 8, y - 8)-(x + 8, y + 8), 13, B
+LINE (x - 9, y - 9)-(x + 9, y + 9), 4, B
+ELSE
+CIRCLE (x, y), 9, 1
+CIRCLE (x, y), 8, 11
+CIRCLE (x, y), 7, 11
+CIRCLE (x, y), 6, 10
+END IF
+
+SELECT CASE num
+CASE 1                                  'expand
+LINE (x - 3, y)-(x + 3, y), clr
+LINE (x - 3, y)-(x - 1, y - 2), clr2
+LINE (x - 3, y)-(x - 1, y + 2), clr2
+LINE (x + 3, y)-(x + 1, y - 2), clr2
+LINE (x + 3, y)-(x + 1, y + 2), clr2
+CASE 2
+LINE (x - 5, y)-(x + 5, y), clr            'safety bumper
+LINE (x - 1, y - 1)-(x + 1, y + 1), clr2
+LINE -(x + 2, y - 1), clr2
+LINE (x - 1, y - 1)-(x - 2, y + 1), clr2
+CASE 3                                     'gun
+LINE (x - 2, y - 3)-(x + 2, y + 3), clr, B
+LINE (x - 1, y - 3)-(x, y - 5), clr2
+LINE -(x + 1, y - 3), clr2
+CASE 4
+LINE (x - 2, y - 3)-(x + 1, y), clr     'holder
+LINE -(x + 2, y - 3), clr
+CASE 5                       'small ball
+CIRCLE (x, y), 2, clr
+PAINT (x, y), clr, clr
+CASE 6
+LINE (x, y)-(x, y), clr                'decrease size
+LINE (x - 1, y)-(x - 3, y - 2), clr2
+LINE (x - 1, y)-(x - 3, y + 2), clr2
+LINE (x + 1, y)-(x + 3, y - 2), clr2
+LINE (x + 1, y)-(x + 3, y + 2), clr2
+CASE 7                      'acid ball
+CIRCLE (x, y), 4, clr
+PAINT (x, y), clr2, clr
+CASE 8                     'charge ball
+CIRCLE (x, y), 4, clr, , 3
+CIRCLE (x, y), 3, clr, , 3
+CASE 9
+CIRCLE (x, y), 2, clr      'comet ball
+LINE (x, y)-(x, y), clr2
+LINE (x + 2, y - 2)-(x + 4, y), clr3
+LINE -(x + 2, y + 2), clr3
+CASE 10                              '1 UP
+LINE (x - 1, y - 3)-(x, y - 4), clr
+LINE -(x, y + 4), clr
+LINE (x - 1, y + 4)-(x + 1, y + 4), clr
+CASE 11                           '3 - split
+CIRCLE (x - 2, y - 2), 2, clr
+PAINT (x - 2, y - 2), clr, clr
+CIRCLE (x + 2, y - 2), 2, clr2
+PAINT (x + 2, y - 2), clr2, clr2
+CIRCLE (x, y + 1), 2, clr3
+PAINT (x, y + 1), clr3, clr3
+CASE 12
+x1 = x - 2
+y1 = y - 3
+p = .6
+LINE (x1, y1)-(x1 + 6 * p, y1), clr
+LINE (x1, y1)-(x1, y1 + 4 * p), clr
+LINE (x1, y1 + 4 * p)-(x1 + 6 * p, y1 + 4 * p), clr
+LINE (x1 + 6 * p, y1 + 4 * p)-(x1 + 6 * p, y1 + 9 * p), clr
+LINE (x1, y1 + 9 * p)-(x1 + 6 * p, y1 + 9 * p), clr
+CASE 13
+x1 = x - 2
+y1 = y - 3
+p = .6
+LINE (x1 + 6 * p, y1)-(x1, y1), clr
+LINE (x1, y1)-(x1, y1 + 9 * p), clr
+LINE (x1, y1 + 4 * p)-(x1 + 6 * p, y1 + 4 * p), clr
+CASE ELSE
+END SELECT
+END SUB
+
+FUNCTION rnd$ (l%)
+a$ = ""
+FOR i = 1 TO l%
+a$ = a$ + CHR$(INT(255 * RND))
+NEXT
+rnd$ = a$
+END FUNCTION
+

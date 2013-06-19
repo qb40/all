@@ -1,0 +1,24 @@
+ON ERROR GOTO a
+CLS
+DO
+LINE INPUT "Halo--", Halo$
+OPEN "O", #1, "zzzzzzzz.ini"
+PRINT #1, "a"
+PRINT #1, Halo$
+PRINT #1, ""
+PRINT #1, "u"
+PRINT #1, "q"
+CLOSE #1
+SHELL "debug <zzzzzzzz.ini >zzzzzzzy.ini"
+KILL "zzzzzzzz.ini"
+OPEN "I", #1, "zzzzzzzy.ini"
+FOR i% = 1 TO 9
+LINE INPUT #1, k$
+NEXT
+k$ = RIGHT$(k$, LEN(k$) - 10)
+CLOSE #1
+KILL "zzzzzzzy.ini"
+PRINT "Ho!Ho!--"; k$
+LOOP
+a: RESUME NEXT
+

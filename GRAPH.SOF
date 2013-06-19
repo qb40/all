@@ -1,0 +1,1928 @@
+'Draw a Screen 0 slided Image = "aaaa.dat" bsave 4000 bytes
+'xpos,ypos,char,attr
+'if(xpos=255) then new slide
+DECLARE SUB mouse.loadprog ()
+DECLARE FUNCTION mouse.init% ()
+DECLARE SUB mouse.show ()
+DECLARE SUB mouse.start2 ()
+DECLARE SUB mouse.show2 ()
+DECLARE SUB mouse.end2 ()
+DECLARE SUB mouse.start3 ()
+DECLARE SUB mouse.show3 ()
+DECLARE SUB mouse.writeat2 (char%, attr%)
+DECLARE SUB mouse.writeat3 (char%, attr%)
+DECLARE SUB mouse.hide ()
+DECLARE SUB mouse.setrange (x1%, y1%, x2%, y2%)
+DECLARE SUB mouse.put (x&, y&)
+DECLARE SUB mouse.status ()
+DECLARE SUB mouse.relativestatus ()
+
+DECLARE FUNCTION dat.datum% (fl1$, pos1&)
+DECLARE SUB dat.loaddata (fl1$, pos1&, pos2&, segment&)
+DECLARE SUB dat.loadpic (fl1$)
+DECLARE SUB makecopy ()
+DECLARE SUB savedat (fl1$)
+
+DECLARE SUB c.blinkcursor (cl%, size!, delay!)
+DECLARE SUB c.character (char$, xx%, yy%, clr%, size!)
+DECLARE SUB c.dispstring (s$, xx%, yy%, clr%, o%, e%, size!)
+DECLARE SUB c.delay (seconds!)
+DECLARE SUB c.clearkey ()
+DECLARE FUNCTION c.removetab$ (k1$)
+DECLARE FUNCTION c.reverse$ (s$)
+DECLARE FUNCTION c.nospc$ (s$)
+DECLARE FUNCTION c.stringcount% (s$, s1$)
+DECLARE FUNCTION c.stringoffset% (s$, s1$, n1%, s2$, n2%, s3$, s4$, s5$)
+DECLARE FUNCTION c.stringpos% (s$, s1$, no%)
+DECLARE SUB c.stringcut (s$, ps%, lenp%)
+DECLARE FUNCTION c.stringword$ (s$, ps%)
+DECLARE SUB c.stringinsert (s$, ps%, w$)
+
+DECLARE SUB screen.drawaxis ()
+DECLARE FUNCTION screen.input$ (s$, cl%, leng%)
+DECLARE FUNCTION screen.word$ (s$, no%, s1$, s2$)
+DECLARE SUB screen.command (s$)               'Process commands
+DECLARE SUB screen.msg (s$, cl%)
+DECLARE SUB screen.error (n%)
+DECLARE SUB screen.mousepos ()
+
+DECLARE FUNCTION eqn.check% (s$)
+DECLARE FUNCTION eqn.comhelp$ (n%)
+DECLARE FUNCTION eqn.checknum% (s$)
+DECLARE FUNCTION eqn.checkcom% (s$)
+DECLARE SUB eqn.setvar (s$, s2$)
+DECLARE FUNCTION eqn.usevalue$ (s$, s1$, s2$)
+DECLARE SUB eqn.save (n$)
+DECLARE SUB eqn.draw ()
+DECLARE SUB eqn.plot (x#, y#)
+DECLARE FUNCTION eqn.evaluate$ (s$)
+DECLARE FUNCTION eqn.findcom% (s$)
+DECLARE FUNCTION eqn.priority$ (s$)
+DECLARE FUNCTION eqn.calculate$ (s$)
+DECLARE FUNCTION eqn.rescode$ (s$)
+DECLARE FUNCTION eqn.resdecode$ (s$)
+DECLARE SUB eqn.setcom (s$, w$)
+'ON ERROR GOTO errors
+
+'Declaring Keys
+CONST backspc = 8, enter = 13, htab = 9, esc = 27
+CONST left = 75, right = 77, up = 72, down = 80
+CONST uplt = 71, uprt = 73, dnlt = 79, dnrt = 81
+CONST insert = 82, home = 73, pageup = 71, del = 83, endk = 81, pagedn = 79
+CONST kf1 = 59, kf2 = 60, kf3 = 61, kf4 = 62, kf5 = 63, kf6 = 64, kf7 = 65, kf8 = 66, kf9 = 67, kf10 = 68, kf11 = 133, kf12 = 134
+'Keys declared
+
+'Declaring constants
+'normal constants
+CONST screenlimitx1 = 10, screenlimity1 = 35, screenlimitx2 = 635, screenlimity2 = 400
+CONST midx = (screenlimitx1 + screenlimitx2) \ 2, midy = (screenlimity1 + screenlimity2) \ 2
+CONST charlimitx1 = 10, charlimity1 = 10, charlimitx2 = 635, charlimity2 = 475
+CONST textslimitx1 = 15, textslimity1 = 405, textslimitx2 = 630, textslimity2 = 465
+CONST textlimitx1 = 25, textlimity1 = 410, textlimitx2 = 630, textlimity2 = 465
+CONST pi = 3.142857142857143#, invpi = .3181818181818182#
+CONST pi2 = pi / 2, pi4 = pi / 4, pi34 = 3 * pi4
+CONST CONST.cursor.blinkspeed = 1000
+CONST CONST.linegap = 10, CONST.cspace = 10
+CONST CONST.blinktime1 = 1 / 19, CONST.blinktime2 = 2
+DIM CONST.separators  AS STRING
+CONST.separators = " :;,.<>={[]}|+-\/*()%^"
+
+TYPE mouse
+        left AS INTEGER
+        right AS INTEGER
+        oldleft AS INTEGER
+        oldright AS INTEGER
+        xpos AS LONG
+        ypos AS LONG
+        oldxpos AS LONG
+        oldypos AS LONG
+        mousetype AS INTEGER
+        mouseattrib AS INTEGER
+        oldmousetype AS INTEGER
+        oldmouseattrib AS INTEGER
+        virtualattrib AS INTEGER
+END TYPE
+DIM Jerry AS mouse
+mouse$ = ""
+Jerry.mousetype = 1
+Jerry.mouseattrib = 1
+Jerry.virtualattrib = 0
+
+TYPE filestring
+        byte AS STRING * 1
+END TYPE
+TYPE pixel
+        x AS INTEGER
+        y AS INTEGER
+END TYPE
+TYPE graph
+        clr AS INTEGER
+        backclr AS INTEGER
+        gap AS INTEGER
+        starts AS INTEGER
+END TYPE
+DIM file AS filestring
+DIM Lastcharpoint AS pixel
+DIM graph1 AS graph
+DIM eqncom(72) AS STRING
+DIM comments(20) AS STRING
+commentno% = 1
+DIM Equation AS STRING
+
+'Equation commands
+eqncom(1) = "and(&,&)=&"
+eqncom(2) = "asc($)=%"
+eqncom(3) = "atan(#)=#"
+eqncom(4) = "cdbl(&)=#"
+eqncom(5) = "cint(#)=%"
+eqncom(6) = "clng(#)=&"
+eqncom(7) = "cos(!)=!"
+eqncom(8) = "csng(&)=!"
+eqncom(9) = "cvd($)=#"
+eqncom(10) = "cvdmbf($)=#"
+eqncom(11) = "cvi($)=%"
+eqncom(12) = "cvl($)=&"
+eqncom(13) = "cvs($)=!"
+eqncom(14) = "cvsmbf($)=!"
+eqncom(15) = "eqv(&,&)=&"
+eqncom(16) = "exp(!)=!"
+eqncom(17) = "fix(!)=%"
+eqncom(18) = "fre(&)=&"
+eqncom(19) = "freefile=%"
+eqncom(20) = "hex$(&)=$"
+eqncom(21) = "imp(&,&)=&"
+eqncom(22) = "inp(&)=%"
+eqncom(23) = "int(#)=&"
+eqncom(24) = "len($)=%"
+eqncom(25) = "log(#)=#"
+eqncom(26) = "lpos(%)=%"
+eqncom(27) = "ltrim$($)=$"
+eqncom(28) = "mkd$(#)=$"
+eqncom(29) = "mkdmbf$(#)=$"
+eqncom(30) = "mki$(%)=$"
+eqncom(31) = "mkl$(&)=$"
+eqncom(32) = "mks$(!)=$"
+eqncom(33) = "mksmbf$(!)=$"
+eqncom(34) = "not(&)=&"
+eqncom(35) = "oct$(&)=$"
+eqncom(36) = "or(&,&)=&"
+eqncom(37) = "peek(&)=%"
+eqncom(38) = "pen(%)=%"
+eqncom(39) = "point(%,%)=%"
+eqncom(40) = "pos(%)=%"
+eqncom(41) = "left$($,%)=$"
+eqncom(42) = "mid$($,%,%)=$"
+eqncom(43) = "right$($,%)=$"
+eqncom(44) = "environ$(%)=$"
+eqncom(45) = "chr$(%)=$"
+eqncom(46) = "rnd(%)=#"
+eqncom(47) = "rtrim$($)=$"
+eqncom(48) = "instr(%,$,$)=%"
+eqncom(49) = "screen(%,%,%)=% "
+eqncom(50) = "setmem(&)=&"
+eqncom(51) = "sgn(#)=%"
+eqncom(52) = "space$(%)=$"
+eqncom(53) = "sqr(#)=#"
+eqncom(54) = "stick(%)=%"
+eqncom(55) = "str$(#)=$"
+eqncom(56) = "strig(%)=%"
+eqncom(57) = "string$(%,%)=$"
+eqncom(58) = "sin(#)=#"
+eqncom(59) = "tan(#)=#"
+eqncom(60) = "time$=$"
+eqncom(61) = "timer=!"
+eqncom(62) = "ucase$($)=$"
+eqncom(63) = "lcase$($)=$"
+eqncom(64) = "val($)=#"
+eqncom(65) = "xor(&,&)=&"
+eqncom(66) = "mod(&,&)=&"
+eqncom(67) = "asin(#)=#"
+eqncom(68) = "acos(#)=#"
+eqncom(69) = "sec(#)=#"
+eqncom(70) = "cot(#)=#"
+eqncom(71) = "cosec(#)=#"
+eqncom(72) = "abs(#)=#"
+
+
+'CLS
+'PRINT eqn.calculate$("2*3")
+'k$ = INPUT$(1)
+
+
+
+'Start mouse
+SCREEN 12
+mouse.loadprog
+a1% = mouse.init%
+IF (a1% <> 1) THEN
+PRINT "Mouse not installed."
+SYSTEM
+END IF
+mouse.put 0, 0
+Jerry.mousetype = 1
+Jerry.mouseattrib = 1
+
+CLS
+Lastcharpoint.x = charlimitx1
+Lastcharpoint.y = charlimity1
+
+c.dispstring "Graph Plotter", Lastcharpoint.x, Lastcharpoint.y, 14, 1, 0, 2
+LINE (5, 30)-(640, 34), 1, BF
+LINE (5, 30)-(9, 500), 1, BF
+LINE (10, 401)-(635, 404), 1, BF
+LINE (636, 30)-(645, 500), 1, BF
+LINE (5, 468)-(640, 469), 1, BF
+graph1.clr = 10
+graph1.backclr = 15
+graph1.gap = 20
+screen.drawaxis
+Lastcharpoint.x = textlimitx1
+Lastcharpoint.y = textlimity1
+mouse.show
+'===================
+'MAIN PROGRAM
+'===================
+screen.msg "Welcome to Simple Graph plotter", 10
+DO
+a$ = screen.input$("Input >", 11, 50)
+screen.command a$
+LOOP
+'======
+'ERROR
+'======
+errors:
+RESUME
+
+SUB c.blinkcursor (cl%, size!, delay!)
+SHARED Lastcharpoint AS pixel
+cl1% = cl%
+FOR lv1% = 1 TO CONST.blinktime2
+mouse.hide
+IF (lv1% MOD 2 = 0) THEN
+cl1% = 0
+LINE (Lastcharpoint.x - 5 * size!, Lastcharpoint.y - 5 * size!)-(Lastcharpoint.x + 5 * size!, Lastcharpoint.y + 7 * size!), cl1%, BF
+ELSE
+cl1% = cl%
+LINE (Lastcharpoint.x - 5 * size!, Lastcharpoint.y - 5 * size!)-(Lastcharpoint.x + 5 * size!, Lastcharpoint.y + 7 * size!), cl1%, BF
+END IF
+mouse.show
+c.delay CONST.blinktime1 * delay!
+NEXT
+END SUB
+
+SUB c.character (char$, xx%, yy%, clr%, size!)
+'check character
+dis% = INT(ASC(char$) - 32)
+IF (dis% > 0) THEN
+sld% = dis%
+fl1$ = "chars.fon"
+ELSE
+LINE (xx% - 5 * size!, yy% - 5 * size!)-(xx% + 5 * size!, yy% + 5 * size!), 0, BF
+GOTO character1
+END IF
+'draw character
+fr% = FREEFILE
+OPEN "B", #fr%, fl1$
+SEEK #fr%, 1
+read$ = INPUT$(2, #fr%)
+xres& = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+read$ = INPUT$(2, #fr%)
+yres& = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+read$ = INPUT$(2, #fr%)
+slds% = ASC(LEFT$(read$, 1)) * 256 + ASC(RIGHT$(read$, 1))
+xx1% = xx% - INT(xres& / 2)
+yy1% = yy% - INT(yres& / 2)
+pos1& = 7 + ((sld% - 1) * (xres& + 1) * (yres& + 1))
+FOR j% = yres& TO 0 STEP -1
+FOR i% = 0 TO xres&
+SEEK #fr%, pos1&
+colour% = ASC(INPUT$(1, #fr%))
+IF (colour% = 1) THEN colour% = clr% ELSE colour% = 0
+LINE (xx1% + i% * size! - size! + 1, yy1% + j% * size! - size! + 1)-(xx1% + i% * size! + size! - 1, yy1% + j% * size! + size! - 1), colour%, BF
+pos1& = pos1& + 1
+NEXT
+NEXT
+CLOSE #fr%
+character1:
+END SUB
+
+SUB c.clearkey
+DEF SEG = 0               'stop beep sound
+POKE &H41A, PEEK(&H41C)   '(by clearing keyboard buffer)
+DEF SEG                   '(Qbasic tip)
+END SUB
+
+SUB c.delay (seconds!)
+tm% = INT(seconds! * 19)
+DEF SEG = 0
+POKE 1132, 0
+DO WHILE (PEEK(1132) < tm%)
+LOOP
+DEF SEG
+END SUB
+
+SUB c.dispstring (s$, xx%, yy%, clr%, o%, e%, size!)
+SHARED Lastcharpoint AS pixel, cursoractive%
+
+IF (s$ = CHR$(0)) THEN
+Lastcharpoint.x = charlimitx1
+Lastcharpoint.y = charlimity1
+GOTO c.dispstring1
+END IF
+
+x1% = xx%
+y1% = yy%
+'IF (x1% < charlimtx1) THEN x1% = charlimitx1
+'IF (y1% < charlimty1) THEN y1% = charlimity1
+'IF (x1% > charlimtx2) THEN x1% = charlimitx2
+'IF (y1% > charlimty2) THEN y1% = charlimity2
+FOR i% = 1 TO LEN(s$)
+c$ = MID$(s$, i%, 1)
+IF (o% <> 0) THEN mouse.hide
+c.character c$, x1%, y1%, clr%, size!
+IF (o% <> 0) THEN mouse.show
+x1% = x1% + INT(CONST.cspace * size!)
+IF (x1% >= charlimitx2) THEN
+        x1% = charlimitx1
+        y1% = y1% + INT(CONST.linegap * size!)
+END IF
+Lastcharpoint.x = x1%
+Lastcharpoint.y = y1%
+IF (o% <> 0) THEN c.blinkcursor o%, size!, 1
+NEXT
+IF (e% <> 0) THEN
+y1% = y1% + INT(e% * CONST.linegap * size!)
+x1% = charlimitx1
+Lastcharpoint.x = x1%
+Lastcharpoint.y = y1%
+END IF
+c.dispstring1:
+END SUB
+
+FUNCTION c.nospc$ (s$)
+FOR i% = 1 TO LEN(s$)
+a1$ = MID$(s$, i%, 1)
+IF (a1$ <> " " AND a1$ <> CHR$(9)) THEN a2$ = a2$ + a1$
+NEXT
+c.nospc$ = a2$
+END FUNCTION
+
+FUNCTION c.removetab$ (k1$)
+b$ = ""
+FOR i% = 1 TO LEN(k1$)
+a$ = MID$(k1$, i%, 1)
+IF (a$ = CHR$(9)) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 0) THEN
+b$ = b$ + " "
+spa% = 1
+ELSEIF (a$ = " " AND spa% = 1) THEN
+ELSE
+b$ = b$ + a$
+spa% = 0
+END IF
+NEXT
+b$ = LTRIM$(RTRIM$(b$))
+c.removetab$ = b$
+END FUNCTION
+
+FUNCTION c.reverse$ (s$)
+FOR i% = LEN(s$) TO 1 STEP -1
+a1$ = a1$ + MID$(s$, i%, 1)
+NEXT
+c.reverse$ = a1$
+END FUNCTION
+
+FUNCTION c.stringcount% (s$, s1$)
+lens% = LEN(s$)
+lens1% = LEN(s1$)
+lens% = lens% - lens1% + 1
+ret% = 0
+FOR i% = 1 TO lens%
+a1$ = MID$(s$, i%, lens1%)
+IF (a1$ = s1$) THEN ret% = ret% + 1
+NEXT
+c.stringcount% = ret%
+END FUNCTION
+
+SUB c.stringcut (s$, ps%, lenp%)
+a$ = LEFT$(s$, ps% - 1)
+a$ = a$ + RIGHT$(s$, LEN(s$) - ps% - lenp% + 1)
+s$ = a$
+END SUB
+
+SUB c.stringinsert (s$, ps%, w$)
+b$ = LEFT$(s$, ps% - 1)
+b$ = b$ + w$
+b$ = b$ + RIGHT$(s$, LEN(s$) - ps% + 1)
+s$ = b$
+END SUB
+
+FUNCTION c.stringoffset% (s$, s1$, n1%, s2$, n2%, s3$, s4$, s5$)
+'s$ = String
+'s1$= String to search in s$
+'n1%= Find nth string if s1$ in s$
+'s2$= Find s2$ in string within s3$ in s$
+'n2%= Find nth string of s2$ after s1$ before s3$
+'s3$= Limit to search of s2$
+'s4$= Search bounding string start
+'s5$= Search bounding string stop
+
+'Search n1th s1$ in s$
+IF (n1% = 0) THEN
+s1pos% = 0
+s3pos% = LEN(s$) + 1
+GOTO c.stringoffset2
+END IF
+a1% = 0
+num% = 0
+lens% = LEN(s$)
+lens1% = LEN(s1$)
+lens% = lens% - lens1% + 1
+FOR i% = 1 TO lens%
+a1$ = MID$(s$, i%, lens1%)
+IF (a1$ = s1$) THEN
+    num% = num% + 1
+    s1pos% = i%
+    IF (num% = n1%) THEN EXIT FOR
+    END IF
+NEXT
+IF (num% <> n1%) THEN GOTO c.stringoffset1
+
+'Search for limiting range(s3$)
+lens% = LEN(s$)
+lens3% = LEN(s3$)
+lens% = lens% - lens3% + 1
+FOR i% = lens% TO s1pos% STEP -1
+a1$ = MID$(s$, i%, lens3%)
+IF (a1$ = s3$) THEN
+    s3pos% = i%
+    EXIT FOR
+    END IF
+NEXT
+IF (s3pos% = 0) THEN s3pos% = lens%
+
+'Search the n2th s2$ within n1th s1$ and s3$
+c.stringoffset2:
+lens2% = LEN(s2$)
+lens% = s3pos% - lens2%'+1
+s1pos% = s1pos% + 1'
+num% = 0
+bound% = 0
+FOR i% = s1pos% TO lens%
+a1$ = MID$(s$, i%, lens2%)
+IF (a1$ = s4$) THEN bound% = bound% + 1
+IF (a1$ = s3$) THEN bound% = bound% - 1
+IF (a1$ = s2$ AND bound% = 0) THEN
+    num% = num% + 1
+    s2pos% = i%
+    IF (num% = n2%) THEN EXIT FOR
+    END IF
+NEXT
+IF (num% <> n2%) THEN GOTO c.stringoffset1
+ret% = s2pos%
+
+c.stringoffset1:
+c.stringoffset% = ret%
+END FUNCTION
+
+FUNCTION c.stringpos% (s$, s1$, no%)
+lens% = LEN(s$)
+lens1% = LEN(s1$)
+lens% = lens% - lens1% + 1
+num% = 0
+FOR i% = 1 TO lens%
+a1$ = MID$(s$, i%, lens1%)
+IF (a1$ = s1$) THEN
+    num% = num% + 1
+    s1pos% = i%
+    IF (num% = no%) THEN EXIT FOR
+    END IF
+NEXT
+IF (num% <> no%) THEN GOTO c.stringpos1
+ret% = s1pos%
+
+c.stringpos1:
+c.stringpos% = ret%
+END FUNCTION
+
+FUNCTION c.stringword$ (s$, ps%)
+SHARED CONST.separators AS STRING
+
+b$ = ""
+i% = ps%
+sep% = 1
+char% = 0
+'Recieve all separators first
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% <> 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve the next characters till a separator
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = b$ + a1$ ELSE EXIT DO
+    i% = i% + 1
+LOOP
+'Now recieve back code
+
+i% = ps% - 1
+IF (i% < 1) THEN GOTO c.stringword1
+DO
+    a1$ = MID$(s$, i%, 1)
+    a1% = INSTR(CONST.separators, a1$)
+    IF (a1% = 0) THEN b$ = a1$ + b$ ELSE EXIT DO
+    i% = i% - 1
+    IF (i% < 1) THEN EXIT DO
+LOOP
+c.stringword1:
+c.stringword$ = b$
+END FUNCTION
+
+FUNCTION dat.datum% (fl1$, pos1&)
+SHARED file AS filestring
+fr% = FREEFILE
+OPEN "B", #fr%, fl1$
+SEEK #fr%, pos1&
+file.byte = INPUT$(1, #fr%)
+CLOSE #fr%
+dat.datum% = ASC(file.byte)
+END FUNCTION
+
+SUB dat.loaddata (fl1$, pos1&, pos2&, segment&)
+SHARED file AS filestring
+DEF SEG = segment&
+fr% = FREEFILE
+OPEN "B", #fr%, fl1$
+IF (pos2& > LOF(fr%)) THEN pos2& = LOF(fr%)
+posp& = pos1&
+sz& = pos2& - pos1& + 3
+POKE 0, (sz& AND &HFF00) \ &H100
+POKE 1, sz& MOD 256
+mem1& = 2
+DO UNTIL posp& > pos2&
+SEEK #fr%, posp&
+posp& = posp& + 1
+file.byte = INPUT$(1, #fr%)
+POKE mem1&, ASC(file.byte)
+mem1& = mem1& + 1
+LOOP
+CLOSE #fr%
+DEF SEG
+END SUB
+
+SUB dat.loadpic (fl1$)
+SHARED save%
+fr% = FREEFILE
+OPEN "B", #fr%, fl1$
+length& = LOF(fr%)
+pos1& = 1
+DO
+SEEK #fr%, pos1&
+IF (pos1& + 4 > length&) THEN EXIT DO
+SEEK #fr%, pos1&
+k$ = INPUT$(4, #fr%)
+IF (LEFT$(k$, 1) = CHR$(255)) THEN
+        pos1& = pos1& + 1
+        SOUND 21000, 5
+        save% = save% + 1
+ELSE
+        x% = ASC(LEFT$(k$, 1))
+        y% = ASC(MID$(k$, 2, 1))
+        c% = ASC(MID$(k$, 3, 1))
+        a% = ASC(RIGHT$(k$, 1))
+        DEF SEG = &HB800
+        POKE (x% + y% * 80) * 2, c%
+        POKE (x% + y% * 80) * 2 + 1, a%
+        DEF SEG
+        pos1& = pos1& + 4
+END IF
+LOOP UNTIL pos1& > length&
+CLOSE #fr%
+END SUB
+
+FUNCTION eqn.calculate$ (s$)
+SHARED CONST.separators AS STRING
+SWAP CONST.separators, sep$
+CONST.separators = " :;,<>={[]}|+-\/*()%^"
+a1% = eqn.checknum%(s$)
+IF (a1% <> -1) THEN
+ans$ = s$
+GOTO calculate1
+END IF
+w1$ = screen.word$(s$, 1, p1$, p2$)
+IF (p1$ <> "") THEN w1$ = p1$ + w1$
+w2$ = screen.word$(s$, 2, p1$, p2$)
+IF (LEN(p1$) > 1) THEN w2$ = RIGHT$(p1$, 1) + w2$
+p1$ = LEFT$(p1$, 1)
+a1% = eqn.checknum%(w1$)
+a2% = eqn.checknum%(w2$)
+IF (a1% = -1 AND a2% = -1) THEN
+ans$ = w1$ + w2$
+GOTO calculate1
+END IF
+
+w1# = VAL(w1$)
+w2# = VAL(w2$)
+SELECT CASE p1$
+    CASE "+"
+    ans# = w1# + w2#
+    CASE "-"
+    ans# = w1# - w2#
+    CASE "*"
+    ans# = w1# * w2#
+    CASE "/"
+    ans# = w1# / w2#
+    CASE "^"
+    ans# = w1# ^ w2#
+CASE ELSE
+END SELECT
+IF (ans$ = "") THEN ans$ = c.nospc$(STR$(ans#))
+calculate1:
+SWAP CONST.separators, sep$
+eqn.calculate$ = ans$
+END FUNCTION
+
+FUNCTION eqn.check% (s$)
+SHARED CONST.separators  AS STRING
+'Changes Equation to remove all spaces when used
+s$ = c.nospc$(s$)
+CONST.separators = " :;,<>={[]}|+-\/*()%^"
+ret% = -1
+s1$ = s$
+i% = 1
+DO
+w1$ = screen.word$(s$, i%, p1$, p2$)
+'check if the word is a
+p1$ = RIGHT$(p1$, 1)
+p2$ = LEFT$(p2$, 1)
+IF (p1$ <> "" AND p1$ <> " " AND p1$ <> "," AND p1$ <> "+" AND p1$ <> "-" AND p1$ <> "*" AND p1$ <> "/" AND p1$ <> "(" AND p1$ <> ")" AND p1$ <> "^" AND p1$ <> "=") THEN GOTO eqn.check1
+SWAP p1$, p2$
+IF (p1$ <> "" AND p1$ <> " " AND p1$ <> "," AND p1$ <> "+" AND p1$ <> "-" AND p1$ <> "*" AND p1$ <> "/" AND p1$ <> "(" AND p1$ <> ")" AND p1$ <> "^" AND p1$ <> "=") THEN GOTO eqn.check1
+i% = i% + 1
+LOOP UNTIL (w1$ = "")
+ret% = 0
+eqn.check1:
+eqn.check% = ret%
+END FUNCTION
+
+FUNCTION eqn.checkcom% (s$)
+SHARED eqncom() AS STRING
+SHARED illegal$
+'ret=0      ;no error
+'ret=-1     ;command start param error
+'ret=-2     ;command not found
+'ret=-3     ;separator error
+'ret=-4     ;datatype error
+SHARED CONST.separators AS STRING
+sep$ = " :;,<>={[]}|\/*()%^"
+SWAP sep$, CONST.separators
+s1$ = c.nospc$(s$)
+
+'Command start parameter error
+ret% = -1
+w1$ = screen.word$(s1$, 1, a1$, a2$)
+IF (LEFT$(a2$, 1) <> "(") THEN GOTO eqn.checkcom1
+
+'Command not found
+ret% = -2
+a1% = eqn.findcom%(w1$)
+IF (a1% = 0) THEN GOTO eqn.checkcom1
+ret% = -3
+
+'Read parameters
+comm% = a1%
+a1% = 2
+CONST.separators = "=,"
+DO UNTIL (screen.word$(eqncom(comm%), a1%, a1$, a2$) = "")
+    w1$ = screen.word$(eqncom(comm%), a1%, a1$, a2$)
+    w2$ = screen.word$(s1$, a1%, b1$, b2$)
+    a2$ = LEFT$(a2$, 1)
+    b1$ = c.nospc$(b1$)
+    b2$ = c.nospc$(b2$)
+    IF (RIGHT$(a1$, 1) = "=") THEN EXIT DO
+   
+    IF (a1$ <> b1$) THEN GOTO eqn.checkcom1
+    IF (a2$ <> b2$) THEN GOTO eqn.checkcom1
+    ret% = -3
+a1% = a1% + 1
+LOOP
+ret% = 0
+eqn.checkcom1:
+SWAP sep$, CONST.separators
+eqn.checkcom% = ret%
+END FUNCTION
+
+FUNCTION eqn.checknum% (s$)
+'ret=1x    ;no error but overflow
+'ret=-1    ;number error
+'ret=x     ;number correct
+s1$ = s$
+ret% = -1
+IF (LEFT$(s1$, 1) = "-") THEN s1$ = RIGHT$(s1$, LEN(s1$) - 1)
+'check for illegal chars
+FOR i% = 1 TO LEN(s1$)
+a1$ = MID$(s1$, i%, 1)
+IF ((a1$ < "0" OR a1$ > "9") AND a1$ <> ".") THEN GOTO eqn.checknum1
+IF (a1$ = ".") THEN
+dots% = dots% + 1
+IF (dots% > 1) THEN GOTO eqn.checknum1
+END IF
+NEXT
+IF (RIGHT$(s1$, 1) = ".") THEN GOTO eqn.checknum1
+'no, the number is a valid number
+IF (dots% = 0 AND VAL(s1$) <= 32767) THEN ret% = 0
+IF (dots% = 0 AND ret% = -1) THEN ret% = 1
+IF (dots% = 1 AND LEN(s1$) <= 8) THEN ret% = 2
+IF (dots% = 1 AND ret% = -1) THEN ret% = 3
+IF (LEN(s1$) > 15) THEN ret1% = 1
+eqn.checknum1:
+eqn.checknum% = SGN(ret%) * (ret1% * 10 + ABS(ret%))
+END FUNCTION
+
+FUNCTION eqn.comhelp$ (n%)
+SHARED eqncom() AS STRING
+SHARED CONST.separators AS STRING
+s1$ = UCASE$(eqncom(n%))
+s2$ = ""
+FOR i% = 1 TO LEN(s1$)
+IF (i% > 1) THEN a1$ = MID$(s1$, i% - 1, 1)
+a2$ = MID$(s1$, i%, 1)
+'check wether a1$ is a separator
+        a1% = 0
+        FOR j% = 1 TO LEN(CONST.separators)
+        k1$ = MID$(CONST.separators, j%, 1)
+        IF (k1$ = a1$) THEN
+        a1% = 1
+        EXIT FOR
+        END IF
+        NEXT
+        IF (a1$ = "") THEN a1% = 1
+'set parameter
+        IF (a1% = 1) THEN
+        a2% = 1
+        SELECT CASE a2$
+        CASE "%"
+        a2$ = " Integer"
+        CASE "&"
+        a2$ = " Long"
+        CASE "!"
+        a2$ = " Single"
+        CASE "#"
+        a2$ = " Double"
+        CASE "$"
+        a2$ = " String"
+        CASE ELSE
+        a2% = 0
+        END SELECT
+        IF (a2% = 1) THEN a2$ = a2$ + "Value "
+        END IF
+        IF (a2$ = "=") THEN a2$ = " <Returns>-----> "
+s2$ = s2$ + a2$
+NEXT
+eqn.comhelp$ = s2$
+END FUNCTION
+
+SUB eqn.draw
+SHARED CONST.separators AS STRING
+SHARED graph1 AS graph
+SHARED Equation AS STRING
+SHARED eqncom() AS STRING
+SHARED asgap%
+
+ret% = -1
+'check wether left side=x or y
+CONST.separators = "="
+w1$ = screen.word$(Equation, 1, p1$, p2$)
+IF (w1$ <> "x" AND w1$ <> "y") THEN
+    screen.error 9
+    GOTO draw1
+    END IF
+IF (w1$ = "x") THEN axis$ = "y" ELSE axis$ = "x"
+CONST.separators = " :;,.<>={[]}|+-\/*()%^"
+
+'check closed brackets
+a1% = c.stringcount(Equation, "(")
+a2% = c.stringcount(Equation, ")")
+IF (a1% <> a2%) THEN
+    screen.error 13
+    GOTO draw1
+    END IF
+
+'check for unset vars
+i% = 2
+DO
+w1$ = screen.word$(Equation, i%, p1$, p2$)
+w1% = eqn.checknum%(w1$)
+IF (p1$ = ":" OR p1$ = ";" OR p1$ = ">" OR p1$ = "<" OR p1$ = "|" OR p1$ = "%") THEN
+    screen.error 12
+    GOTO draw1
+    END IF
+SWAP p1$, p2$
+IF (p1$ = ":" OR p1$ = ";" OR p1$ = ">" OR p1$ = "<" OR p1$ = "|" OR p1$ = "%") THEN
+    screen.error 12
+    GOTO draw1
+    END IF
+IF (w1% >= 10 AND eqn.findcom%(w1$) = 0 AND w1$ <> axis$) THEN
+    screen.error 10
+    GOTO draw1
+    END IF
+srch% = eqn.findcom%(w1$)
+IF (w1% = -1 AND srch% = 0 AND (w1$ <> axis$)) THEN
+    screen.error 11
+    GOTO draw1
+    END IF
+i% = i% + 1
+LOOP UNTIL w1$ = ""
+
+'seems to have no errors
+'OKAY then now run the equation
+Expression$ = RIGHT$(Equation, (LEN(Equation) - INSTR(Equation, "=")))'screen.word$(Equation, 2, p1$, p2$)
+Xmax# = -320
+Ymax# = -320
+Xmin# = 320
+Ymin# = 320
+IF (asgap% = 1) THEN
+Steps# = 1! / graph1.gap
+Start# = -320# / graph1.gap
+Stops# = -1 * Start#
+ELSE
+Steps# = 1
+Start# = -320
+Stops# = 320
+END IF
+
+VIEW SCREEN (screenlimitx1, screenlimity1)-(screenlimitx2, screenlimity2)
+graph1.starts = 1
+FOR bomb# = Start# TO Stops# STEP Steps#
+    'Step-1
+    'Replace all axis string by real values
+    n$ = c.nospc$(STR$(bomb#))
+    Valued$ = eqn.usevalue$(Expression$, axis$, n$)
+   
+    'Step-2
+    'Now go on calculating and storing the result
+    'Search for bracketised systems
+    'Then evalute properly
+    xx1$ = Valued$
+    Result# = VAL(eqn.evaluate$(xx1$))
+    
+
+    'Step-3
+    'Detect wether the result is a maximum or minimum
+    IF (axis$ = "x") THEN
+        IF (Result# > Ymax#) THEN
+            Ymax# = Result#
+            Xmax# = bomb#
+            END IF
+        IF (Result# < Ymin#) THEN
+            Ymin# = Result#
+            Xmin# = bomb#
+            END IF
+    ELSEIF (axis$ = "y") THEN
+        IF (Result# > Xmax#) THEN
+            Xmax# = Result#
+            Ymax# = bomb#
+            END IF
+        IF (Result# < Xmin#) THEN
+            Xmin# = Result#
+            Ymin# = bomb#
+            END IF
+    END IF
+
+    'Step-3
+    'Now is the time to display the result
+    IF (axis$ = "y") THEN eqn.plot Result#, bomb# ELSE eqn.plot bomb#, Result#
+
+graph1.starts = 0
+NEXT
+VIEW
+ret% = 0
+
+
+draw1:
+CONST.separators = " :;,.<>={[]}|+-\/*()%^"
+IF (ret% = 0) THEN screen.msg "Graph Successfully drawn :->", 15 ELSE screen.msg "Sorry! Graph colud not be drawn ;-<", 15
+END SUB
+
+FUNCTION eqn.evaluate$ (s$)
+'Evaluate commands first
+GOSUB evaluate2
+DO
+w1$ = screen.word$(s$, i%, p1$, p2$)
+a1% = eqn.findcom%(w1$)
+IF (a1% <> 0) THEN
+eqn.setcom s$, w1$
+GOSUB evaluate2
+END IF
+i% = i% - 1
+LOOP UNTIL i% < 1
+ret$ = eqn.priority$(s$)
+GOTO evaluate1
+
+'Last word no.
+evaluate2:
+i% = 1
+DO
+z1$ = screen.word$(s$, i%, p1$, p2$)
+i% = i% + 1
+LOOP UNTIL z1$ = ""
+i% = i% - 1
+RETURN
+
+evaluate1:
+eqn.evaluate$ = ret$
+END FUNCTION
+
+FUNCTION eqn.findcom% (s$)
+SHARED eqncom() AS STRING
+s1$ = c.nospc$(s$)
+ret% = 0
+FOR i% = 1 TO UBOUND(eqncom)
+w1$ = screen.word$(eqncom(i%), 1, p1$, p2$)
+IF (w1$ = s1$) THEN
+ret% = i%
+EXIT FOR
+END IF
+NEXT
+eqn.findcom% = ret%
+END FUNCTION
+
+SUB eqn.plot (x#, y#)
+SHARED asgap%, graph1 AS graph, drawcolour%
+mouse.hide
+IF (asgap% = 0) THEN
+    x1# = midx + x#
+    y1# = midy - y#
+    IF (graph1.starts) THEN LINE (x1#, y1#)-(x1#, y1#), drawcolour% ELSE LINE -(x1#, y1#), drawcolour%
+ELSE
+    x1# = midx + (x# * graph1.gap)
+    y1# = midy - (y# * graph1.gap)
+    IF (graph1.starts) THEN LINE (x1#, y1#)-(x1#, y1#), drawcolour% ELSE LINE -(x1#, y1#), drawcolour%
+END IF
+mouse.show
+END SUB
+
+FUNCTION eqn.priority$ (s$)
+SHARED CONST.separators AS STRING
+CONST.separators = " :;,<>={[]}|+-\/*()%^"
+'Priority method
+'B-();E-^;D-/;M-*;A-+;S--
+'Remove all null brackets to prevent program error. This is called Chatarami.
+s1$ = s$
+GOSUB priority3
+s1$ = s2$
+
+'s1$ contains the string
+
+'Seek tasks
+bracket% = c.stringcount%(s1$, "(")   'max (
+DO
+    'Now search for priority thigs in bracket
+    'Priority 1:
+    p1$ = "^"
+    GOSUB priority2
+    p1$ = "/"
+    GOSUB priority2
+    p1$ = "*"
+    GOSUB priority2
+    p1$ = "+"
+    GOSUB priority2
+    p1$ = "-"
+    GOSUB priority2
+bracket% = bracket% - 1
+LOOP UNTIL bracket% < 0
+GOTO priority1
+
+priority2:
+ii% = 1
+DO
+a3% = c.stringoffset%(s1$, "(", bracket%, p1$, ii%, ")", "(", ")")
+IF (a3% <> 0) THEN
+    a1$ = c.stringword$(s1$, a3%)
+    c.stringcut s1$, a3% - INSTR(a1$, p1$) + 1, LEN(a1$)
+   
+    GOSUB priority3
+    s1$ = s2$
+    IF (remove% = 1) THEN a3% = a3% - 1
+    c.stringinsert s1$, a3% - INSTR(a1$, p1$) + 1, eqn.calculate$(a1$)
+    ii% = ii% + 1
+    ELSE
+    EXIT DO
+    END IF
+LOOP
+RETURN
+
+priority3:
+s2$ = ""
+remove% = 0
+b1% = 1
+b2% = LEN(s1$)
+DO
+b1$ = MID$(s1$, b1%, 1)
+b2$ = MID$(s1$, b1% + 1, 1)
+IF ((b1$ = "(" OR b1$ = "[" OR b1$ = "{") AND (b2$ = ")" OR b2$ = "]" OR b2$ = "}")) THEN
+remove% = 1
+b1% = b1% + 2
+ELSE
+s2$ = s2$ + b1$
+b1% = b1% + 1
+END IF
+LOOP WHILE b1% < b2%
+IF (b1% = b2%) THEN s2$ = s2$ + RIGHT$(s1$, 1)
+RETURN
+
+priority1:
+eqn.priority$ = s1$
+END FUNCTION
+
+FUNCTION eqn.rescode$ (s$)
+a1$ = ""
+FOR i% = 1 TO LEN(s$)
+a2$ = MID$(s$, i%, 1)
+SELECT CASE a2$
+    CASE "+"
+    a2$ = CHR$(20)
+    CASE "-"
+    a2$ = CHR$(21)
+    CASE "."
+    a2$ = CHR$(22)
+    CASE ELSE
+    END SELECT
+a1$ = a1$ + a2$
+NEXT
+eqn.rescode$ = a1$
+END FUNCTION
+
+FUNCTION eqn.resdecode$ (s$)
+a1$ = ""
+FOR i% = 1 TO LEN(s$)
+a2$ = MID$(s$, i%, 1)
+SELECT CASE a2$
+    CASE CHR$(20)
+    a2$ = "+"
+    CASE CHR$(21)
+    a2$ = "-"
+    CASE CHR$(22)
+    a2$ = "."
+    CASE ELSE
+    END SELECT
+a1$ = a1$ + a2$
+NEXT
+eqn.resdecode$ = a1$
+END FUNCTION
+
+SUB eqn.save (n$)
+'Save file:"graphs.pcx"
+'Format:
+'(2b)   = Bytes used by the graph
+'(1b)   = Length of name of graph
+'(xb)   = Name of graph
+'(1b)   = No. of comments
+'   (1b) = Length of comment
+'   (xb) = Comment
+'   .
+'   .
+'   .
+'(1b)   = Length of Equation
+'(xb)   = Equation
+
+END SUB
+
+SUB eqn.setcom (s$, w$)
+SHARED CONST.separators AS STRING
+a1% = INSTR(s$, w$)
+a2% = INSTR(a1%, s$, ")")
+c$ = MID$(s$, a1%, a2% - a1% + 1)
+c.stringcut s$, a1%, a2% - a1% + 1
+a5% = eqn.checkcom%(c$)
+IF (a5% <> 0) THEN GOTO setcom1
+a2% = eqn.findcom%(screen.word$(c$, 1, p1$, p2$))
+CONST.separators = " :;,<>={[]}|+-\/*()%^"
+a1$ = screen.word$(c$, 2, p1$, p2$)
+IF (RIGHT$(p1$, 1) = "-") THEN a1$ = "-" + a1$
+a2$ = screen.word$(c$, 3, p1$, p2$)
+IF (RIGHT$(p1$, 1) = "-") THEN a2$ = "-" + a2$
+a3$ = screen.word$(c$, 4, p1$, p2$)
+IF (RIGHT$(p1$, 1) = "-") THEN a3$ = "-" + a3$
+a4$ = screen.word$(c$, 5, p1$, p2$)
+IF (RIGHT$(p1$, 1) = "-") THEN a4$ = "-" + a4$
+a1$ = eqn.priority$(a1$)
+a2$ = eqn.priority$(a2$)
+a3$ = eqn.priority$(a3$)
+a4$ = eqn.priority$(a4$)
+'Remember to process all a1,a2,a3s
+
+IF (a2% = 0) THEN GOTO setcom1
+SELECT CASE a2%
+    CASE 1
+    r# = VAL(a1$) AND VAL(a2$)
+    CASE 2
+    r# = ASC(a1$)
+    CASE 3
+    r# = ATN(VAL(a1$))
+    CASE 4
+    r# = CDBL(VAL(a1$))
+    CASE 5
+    r# = CINT(VAL(a1$))
+    CASE 6
+    r# = CLNG(VAL(a1$))
+    CASE 7
+    r# = COS(VAL(a1$))
+    CASE 8
+    r# = CSNG(VAL(a1$))
+    CASE 9
+    r# = CVD(a1$)
+    CASE 10
+    r# = CVDMBF(a1$)
+    CASE 11
+    r# = CVI(a1$)
+    CASE 12
+    r# = CVL(a1$)
+    CASE 13
+    r# = CVS(a1$)
+    CASE 14
+    r# = CVSMBF(a1$)
+    CASE 15
+    r# = VAL(a1$) EQV VAL(a2$)
+    CASE 16
+    r# = EXP(VAL(a1$))
+    CASE 17
+    r# = FIX(VAL(a1$))
+    CASE 18
+    r# = FRE(VAL(a1$))
+    CASE 19
+    r# = FREEFILE
+    CASE 20
+    r$ = HEX$(VAL(a1$))
+    CASE 21
+    r# = VAL(a1$) IMP VAL(a2$)
+    CASE 22
+    r# = INP(VAL(a1$))
+    CASE 23
+    r# = INT(VAL(a1$))
+    CASE 24
+    r# = LEN(a1$)
+    CASE 25
+    r# = LOG(VAL(a1$))
+    CASE 26
+    r# = LPOS(VAL(a1$))
+    CASE 27
+    r$ = LTRIM$(a1$)
+    CASE 28
+    r$ = MKD$(VAL(a1$))
+    CASE 29
+    r$ = MKDMBF$(VAL(a1$))
+    CASE 30
+    r$ = MKI$(VAL(a1$))
+    CASE 31
+    r$ = MKL$(VAL(a1$))
+    CASE 32
+    r$ = MKS$(VAL(a1$))
+    CASE 33
+    r$ = MKSMBF$(VAL(a1$))
+    CASE 34
+    r# = NOT (VAL(a1$))
+    CASE 35
+    r$ = OCT$(VAL(a1$))
+    CASE 36
+    r# = VAL(a1$) OR VAL(a2$)
+    CASE 37
+    r# = PEEK(VAL(a1$))
+    CASE 38
+    r# = PEN(VAL(a1$))
+    CASE 39
+    r# = POINT(VAL(a1$), VAL(a2$))
+    CASE 40
+    r# = POS(VAL(a1$))
+    CASE 41
+    r$ = LEFT$(a1$, VAL(a2$))
+    CASE 42
+    r$ = MID$(a1$, VAL(a2$), VAL(a3$))
+    CASE 43
+    r$ = RIGHT$(a1$, VAL(a2$))
+    CASE 44
+    r$ = ENVIRON$(VAL(a1$))
+    CASE 45
+    r$ = CHR$(VAL(a1$))
+    CASE 46
+    r# = RND(VAL(a1$))
+    CASE 47
+    r$ = RTRIM$(a1$)
+    CASE 48
+    r# = INSTR(VAL(a1$), a2$, a3$)
+    CASE 49
+    r# = SCREEN(VAL(a1$), VAL(a2$), VAL(a3$))
+    CASE 50
+    r# = SETMEM(VAL(a1$))
+    CASE 51
+    r# = SGN(VAL(a1$))
+    CASE 52
+    r$ = SPACE$(VAL(a1$))
+    CASE 53
+    r# = SQR(VAL(a1$))
+    CASE 54
+    r# = STICK(VAL(a1$))
+    CASE 55
+    r$ = STR$(VAL(a1$))
+    CASE 56
+    r# = STRIG(VAL(a1$))
+    CASE 57
+    r$ = STRING$(VAL(a1$), a2$)
+    CASE 58
+    r# = SIN(VAL(a1$))
+    CASE 59
+    r# = TAN(VAL(a1$))
+    CASE 60
+    r$ = TIME$
+    CASE 61
+    r# = TIMER
+    CASE 62
+    r$ = UCASE$(a1$)
+    CASE 63
+    r$ = LCASE$(a1$)
+    CASE 64
+    r# = VAL(a1$)
+    CASE 65
+    r# = VAL(a1$) XOR VAL(a2$)
+    CASE 66
+    r# = VAL(a1$) MOD VAL(a2$)
+    CASE 67
+    'r#=Math.asin(val(a1$))
+    CASE 68
+    'r#=Math.acos(val(a1$))
+    CASE 69
+    'r#=Math.sec(val(a1$))
+    CASE 70
+    'r#=Math.cot(val(a1$))
+    CASE 71
+    'r#=Math.cosec(val(a1$))
+    CASE 72
+    r# = ABS(VAL(a1$))
+CASE ELSE
+END SELECT
+IF (LEN(r$) = 0) THEN r$ = c.nospc$(STR$(r#))
+setcom1:
+c.stringinsert s$, a1%, r$
+CONST.separators = " :;,.<>={[]}|+-\/*()%^"
+END SUB
+
+SUB eqn.setvar (s$, s2$)
+SHARED Equation AS STRING
+i% = 1
+b$ = ""
+DO
+w1$ = screen.word$(Equation, i%, p1$, p2$)
+IF (w1$ = s$) THEN w1$ = s2$
+b$ = b$ + w1$ + p2$
+LOOP UNTIL (w1$ = "")
+Equation = b$
+END SUB
+
+FUNCTION eqn.usevalue$ (s$, s1$, s2$)
+SHARED CONST.separators AS STRING
+sep$ = " :;,.<>={[]}|+-\/*()%^"
+SWAP sep$, CONST.separators
+b$ = ""
+i% = 1
+DO
+w1$ = screen.word$(s$, i%, p1$, p2$)
+IF (w1$ = s1$) THEN w1$ = s2$
+b$ = b$ + w1$ + p2$
+i% = i% + 1
+LOOP UNTIL w1$ = ""
+SWAP sep$, CONST.separators
+eqn.usevalue$ = b$
+END FUNCTION
+
+SUB makecopy
+DEF SEG = &HB800
+mem1& = 0
+DO
+POKE 5002 + mem1&, PEEK(mem1&)
+mem1& = mem1& + 1
+LOOP UNTIL mem1& > 4000
+DEF SEG
+END SUB
+
+SUB mouse.end2
+SHARED Jerry AS mouse
+mem1& = (Jerry.xpos + Jerry.ypos * 80) * 2
+DEF SEG = &HB800
+POKE mem1&, PEEK(5000)
+POKE mem1& + 1, PEEK(5001)
+DEF SEG
+END SUB
+
+SUB mouse.hide
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 22
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+FUNCTION mouse.init%
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$)
+CALL absolute(mem1&)
+DEF SEG = &H100
+IF (PEEK(0) = 255 AND PEEK(1) = 255) THEN a1% = 1
+DEF SEG
+mouse.init% = a1%
+END FUNCTION
+
+SUB mouse.loadprog
+SHARED mouse$
+CLS                          'Load ASM Program to mouse$
+OPEN "B", #1, "mouse.dll"
+FOR i = 1 TO LOF(1)
+SEEK #1, i
+k$ = INPUT$(1, #1)
+mouse$ = mouse$ + k$
+NEXT
+CLOSE #1
+END SUB
+
+SUB mouse.put (x&, y&)
+SHARED mouse$
+x& = x& * 8
+y& = y& * 8
+DEF SEG = &H101
+POKE 0, x& MOD 256
+POKE 1, x& \ 256
+POKE 2, y& MOD 256
+POKE 3, y& \ 256
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 66
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+SUB mouse.relativestatus
+SHARED Jerry AS mouse
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 117
+CALL absolute(mem1&)
+DEF SEG = &H100
+a1% = PEEK(0)
+Jerry.left = a1% AND 1
+Jerry.right = (a1% AND 2) \ 2
+a1& = PEEK(2)
+a2& = PEEK(3)
+Jerry.xpos = a2& * 256 + a1&
+IF (Jerry.xpos AND &H8000 = &H8000) THEN Jerry.xpos = -1 * (NOT (Jerry.xpos) + 1)
+Jerry.xpos = Jerry.xpos \ 2
+a1& = PEEK(4)
+a2& = PEEK(5)
+Jerry.ypos = a2& * 256 + a1&
+IF (Jerry.ypos AND &H8000 = &H8000) THEN Jerry.ypos = -1 * (NOT (Jerry.ypos) + 1)
+DEF SEG
+END SUB
+
+SUB mouse.setrange (x1%, y1%, x2%, y2%)
+SHARED mouse$
+DEF SEG = &H101
+POKE 1, 0'x1% MOD 256
+POKE 0, 0' x1% \ 256
+POKE 3, 200'x2% MOD 256
+POKE 2, 0'x2% \ 256
+POKE 5, 0'y1% MOD 256
+POKE 4, 0'y1% \ 256
+POKE 7, 100'y2% MOD 256
+POKE 6, 0'y2% \ 256
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 28
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+SUB mouse.show
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 16
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+
+SUB mouse.show2
+SHARED Jerry AS mouse, k$
+mouse.status
+IF (Jerry.virtualattrib > 0) THEN
+IF (Jerry.oldleft <> Jerry.left OR Jerry.oldright <> Jerry.right) THEN
+at% = Jerry.virtualattrib
+wr% = at% AND &HF
+IF (Jerry.left = 1) THEN wr% = (wr% * 2) AND &HF
+wr1% = at% AND &HF0
+IF (Jerry.right = 1) THEN wr1% = (wr1% * 2) AND &HF0
+wr% = wr1% + wr%
+IF (Jerry.oldxpos = Jerry.xpos AND Jerry.oldypos = Jerry.ypos) THEN
+DEF SEG = &HB800
+mem1& = (Jerry.ypos * 80 + Jerry.xpos) * 2 + 1
+POKE mem1&, wr%
+DEF SEG
+END IF
+Jerry.oldleft = Jerry.left
+Jerry.oldright = Jerry.right
+Jerry.mouseattrib = wr%
+END IF
+END IF
+IF (Jerry.oldxpos <> Jerry.xpos OR Jerry.oldypos <> Jerry.ypos OR Jerry.oldmouseattrib <> Jerry.mouseattrib OR Jerry.oldmousetype <> Jerry.mousetype) THEN
+DEF SEG = &HB800
+mem1& = (Jerry.oldypos * 80 + Jerry.oldxpos) * 2
+POKE mem1&, PEEK(5000)
+POKE mem1& + 1, PEEK(5001)
+mem1& = (Jerry.ypos * 80 + Jerry.xpos) * 2
+POKE 5000, PEEK(mem1&)
+POKE 5001, PEEK(mem1& + 1)
+POKE mem1&, Jerry.mousetype
+POKE mem1& + 1, Jerry.mouseattrib
+Jerry.oldypos = Jerry.ypos
+Jerry.oldxpos = Jerry.xpos
+Jerry.oldmouseattrib = Jerry.mouseattrib
+Jerry.oldmousetype = Jerry.mousetype
+DEF SEG
+END IF
+END SUB
+
+SUB mouse.show3
+SHARED Jerry AS mouse
+mouse.status
+IF (Jerry.oldxpos <> Jerry.xpos OR Jerry.oldypos <> Jerry.ypos) THEN
+DEF SEG = &HB800
+mem1& = (Jerry.oldypos * 80 + Jerry.oldxpos) * 2
+POKE mem1&, Jerry.mousetype
+POKE mem1& + 1, NOT (Jerry.mouseattrib)
+mem1& = (Jerry.ypos * 80 + Jerry.xpos) * 2
+Jerry.mousetype = PEEK(mem1&)
+Jerry.mouseattrib = NOT (PEEK(mem1& + 1))
+POKE mem1&, Jerry.mousetype
+POKE mem1& + 1, Jerry.mouseattrib
+Jerry.oldypos = Jerry.ypos
+Jerry.oldxpos = Jerry.xpos
+DEF SEG
+END IF
+END SUB
+
+SUB mouse.start2
+SHARED Jerry AS mouse
+mem1& = (Jerry.xpos + Jerry.ypos * 80) * 2
+DEF SEG = &HB800
+POKE 5000, PEEK(mem1&)
+POKE 5001, PEEK(mem1& + 1)
+DEF SEG
+END SUB
+
+SUB mouse.start3
+SHARED Jerry AS mouse
+DEF SEG = &HB800
+mem1& = (Jerry.oldypos * 80 + Jerry.oldxpos) * 2
+Jerry.mousetype = PEEK(mem1&)
+Jerry.mouseattrib = NOT (PEEK(mem1& + 1))
+DEF SEG
+END SUB
+
+SUB mouse.status
+SHARED Jerry AS mouse
+SHARED mouse$
+DEF SEG = VARSEG(mouse$)
+mem1& = SADD(mouse$) + 89
+CALL absolute(mem1&)
+DEF SEG = &H100
+a1% = PEEK(0)
+Jerry.left = a1% AND 1
+Jerry.right = (a1% AND 2) \ 2
+a1& = PEEK(2)
+a2& = PEEK(3)
+Jerry.xpos = a2& * 256 + a1&
+a1& = PEEK(4)
+a2& = PEEK(5)
+Jerry.ypos = a2& * 256 + a1&
+DEF SEG
+END SUB
+
+SUB mouse.writeat2 (char%, attr%)
+SHARED Jerry AS mouse
+DEF SEG = &HB800
+POKE 5000, char%
+POKE 5001, attr%
+DEF SEG
+END SUB
+
+SUB mouse.writeat3 (char%, attr%)
+SHARED Jerry AS mouse
+Jerry.mousetype = char%
+Jerry.mouseattrib = NOT (attr%)
+END SUB
+
+SUB savedat (fl1$)
+fr% = FREEFILE
+OPEN "B", #fr%, fl1$
+pos1& = LOF(fr%) + 1
+a1$ = CHR$(255)
+PUT #fr%, pos1&, a1$
+pos1& = pos1& + 1
+DEF SEG = &HB800
+mem1& = 0
+DO
+IF (PEEK(mem1&) <> PEEK(5002 + mem1&) OR PEEK(mem1& + 1) <> PEEK(5003 + mem1&)) THEN
+yy% = mem1& \ 160
+xx% = (mem1& - yy% * 160) \ 2
+ch% = PEEK(mem1&)
+at% = PEEK(mem1& + 1)
+a1$ = CHR$(xx%)
+PUT #fr%, pos1&, a1$
+pos1& = pos1& + 1
+a1$ = CHR$(yy%)
+PUT #fr%, pos1&, a1$
+pos1& = pos1& + 1
+a1$ = CHR$(ch%)
+PUT #fr%, pos1&, a1$
+pos1& = pos1& + 1
+a1$ = CHR$(at%)
+PUT #fr%, pos1&, a1$
+pos1& = pos1& + 1
+END IF
+mem1& = mem1& + 2
+LOOP UNTIL mem1& > 4000
+DEF SEG
+CLOSE #fr%
+END SUB
+
+SUB screen.command (s$)               'Process commands
+SHARED Lastcharpoint AS pixel
+SHARED graph1 AS graph
+SHARED comments() AS STRING, commentno%
+SHARED Equation  AS STRING
+SHARED asgap%, drawcolour%
+s1$ = LCASE$(s$)
+'get the command
+c1$ = screen.word$(s1$, 1, p1$, p2$)
+'param error
+a1$ = ""
+a2$ = " "
+GOSUB parerr
+'command param correct
+SELECT CASE c1$
+CASE "graph"         'GRAPH cl1%,backcl%,gap%
+        'par error
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = ","
+        GOSUB parerr
+        'par1 correct
+        w2$ = screen.word$(s1$, 3, p1$, p2$)
+        a1$ = ","
+        a2$ = ","
+        GOSUB parerr
+        'par2 correct
+        w3$ = screen.word$(s1$, 4, p1$, p2$)
+        a1$ = ","
+        a2$ = " "
+        GOSUB parerr
+        'par3 correct
+        'All correct
+        graph1.clr = INT(VAL(w1$))
+        graph1.backclr = INT(VAL(w2$))
+        graph1.gap = INT(VAL(w3$))
+        screen.drawaxis
+CASE "clear"
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = " "
+        GOSUB parerr
+        SELECT CASE w1$
+        CASE "text"
+        VIEW SCREEN (textslimitx1, textslimity1)-(textslimitx2, textslimity2)
+        CLS
+        VIEW
+        Lastcharpoint.x = textlimitx1
+        Lastcharpoint.y = textlimity1
+        CASE "graph"
+        screen.drawaxis
+        CASE ELSE
+        screen.error 3
+        GOTO command1
+        END SELECT
+CASE "comment" 'Set a comment to save to file
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = " "
+        GOSUB parerr
+        SELECT CASE w1$
+        CASE "set"
+        IF (commentno% > UBOUND(comments)) THEN
+        screen.error 8
+        GOTO command1
+        ELSE
+        comments(commentno%) = screen.input$("Comment" + STR$(commentno%) + ">", 4, 50)
+        commentno% = commentno% + 1
+        END IF
+        CASE "clear"
+        FOR lv1% = 1 TO UBOUND(comments)
+        comments(lv1%) = ""
+        NEXT
+        commentno% = 1
+        CASE "clearspecific"
+        c1% = VAL(screen.input$("Comment no.>", 4, 50))
+        comments(c1%) = ""
+        CASE "setspecific"
+        c1% = VAL(screen.input$("Comment no.>", 4, 50))
+        comments(c1%) = screen.input$("Comment" + STR$(commentno%) + ">", 4, 50)
+        CASE ELSE
+        screen.error 3
+        GOTO command1
+        END SELECT
+CASE "equation"      'EQUATION equation
+        Equation = screen.input$("EQUATION >>", 13, 50)
+        IF (eqn.check%(Equation) <> 0) THEN
+        Equation = ""
+        screen.error 4
+        GOTO command1
+        END IF
+CASE "setvar"  'set variables to x or yaxis
+        'par error
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        a1$ = " "
+        a2$ = ","
+        GOSUB parerr
+        'par1 correct
+        w1$ = screen.word$(s1$, 3, p1$, p2$)
+        a1$ = ","
+        a2$ = " "
+        GOSUB parerr
+        'par2 correct
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        w2$ = screen.word$(s1$, 3, p1$, p2$)
+        eqn.setvar w1$, w2$
+CASE "asgap"
+        w1$ = screen.word$(s1$, 2, p1$, p2$)
+        SELECT CASE w1$
+        CASE "on"
+        asgap% = 1
+        CASE "off"
+        asgap% = 0
+        CASE ""
+        asgap% = (asgap% + 1) MOD 2
+        CASE ELSE
+        GOSUB parerr
+        END SELECT
+
+
+CASE "draw"
+        drawcolour% = VAL(screen.word$(s1$, 2, p1$, p2$))
+        eqn.draw
+CASE "save"    'Save to file graph.gra(addressed file)
+
+
+
+
+
+CASE ELSE
+screen.error 1       'Illegal command
+END SELECT
+
+GOTO command1
+
+parerr:
+IF (p1$ <> a1$ OR p2$ <> a2$) THEN
+screen.error 2
+GOTO command1
+END IF
+RETURN
+
+command1:
+END SUB
+
+SUB screen.drawaxis
+SHARED graph1 AS graph
+cl% = graph1.clr
+clr% = graph1.backclr
+gap% = graph1.gap
+VIEW SCREEN (screenlimitx1, screenlimity1)-(screenlimitx2, screenlimity2)
+CLS
+PAINT (midx, midy), clr%
+LINE (midx - 1, 0)-(midx + 1, 500), (cl% + 1) MOD 16, BF
+LINE (0, midy - 1)-(640, midy + 1), (cl% + 1) MOD 16, BF
+cl1% = (cl% + 2) MOD 16
+FOR i% = midx + gap% TO 640 STEP gap%
+LINE (i%, 0)-(i%, 500), cl%
+LINE (i%, midy - 2)-(i%, midy + 2), cl1%
+NEXT
+FOR i% = midx - gap% TO 0 STEP -gap%
+LINE (i%, 0)-(i%, 500), cl%
+LINE (i%, midy - 2)-(i%, midy + 2), cl1%
+NEXT
+FOR i% = midy + gap% TO 500 STEP gap%
+LINE (0, i%)-(640, i%), cl%
+LINE (midx - 2, i%)-(midx + 2, i%), cl1%
+NEXT
+FOR i% = midy - gap% TO 0 STEP -gap%
+LINE (0, i%)-(640, i%), cl%
+LINE (midx - 2, i%)-(midx + 2, i%), cl1%
+NEXT
+VIEW
+END SUB
+
+SUB screen.error (n%)
+SELECT CASE n%
+CASE 1
+screen.msg "Illegal Command!", 11
+CASE 2
+screen.msg "Wrong Separators used!", 11
+CASE 3
+screen.msg "Incorrect Parametres!", 11
+CASE 4
+screen.msg "Illegal Equation!", 12
+CASE 5
+screen.msg "Variables not set to axis!", 12
+CASE 6
+screen.msg "No variable step set!", 12
+CASE 7
+screen.msg "Unrecognizable Error!", 12
+CASE 8
+screen.msg "No more space for comments left!", 12
+CASE 9
+screen.msg "No X or Y on L.H.S. of Equation. Cannot Evaluate!", 14
+CASE 10
+screen.msg "Datatype Overflow in equation!", 14
+CASE 11
+screen.msg "Variable(s) not set in Equation", 14
+CASE 12
+screen.msg "Illegal separators used in Equation!", 14
+CASE 13
+screen.msg "Brackets not set properly!", 14
+CASE ELSE
+screen.msg "Internal Error!", 13
+END SELECT
+END SUB
+
+FUNCTION screen.input$ (s$, cl%, leng%)
+SHARED Lastcharpoint AS pixel
+
+xg% = CONST.linegap \ 2
+yg% = CONST.cspace \ 2
+'VIEW SCREEN (textslimitx1, textslimity1)-(textslimitx2, textslimity2)
+cl1% = (cl% + 1) MOD 16
+cl2% = (cl% + 2) MOD 16
+cl3% = (cl% + 3) MOD 16
+c.dispstring s$, Lastcharpoint.x, Lastcharpoint.y, cl%, cl1%, 0, 1
+LINE (Lastcharpoint.x - 5, Lastcharpoint.y - 5)-(630, Lastcharpoint.y + 5), 0, BF
+
+x1% = Lastcharpoint.x
+y1% = Lastcharpoint.y
+ln% = 0
+st$ = ""
+k$ = ""
+DO UNTIL k$ = CHR$(enter)
+        k$ = ""
+        c.clearkey      'clear keyboard buffer
+        WHILE k$ = ""
+        k$ = INKEY$
+        'mouse usage
+        mouse.status
+        screen.mousepos
+        WEND
+        k% = ASC(k$)
+SELECT CASE k%
+CASE esc
+        Lastcharpoint.x = x1%
+        Lastcharpoint.y = y1%
+        st$ = ""
+        c.dispstring SPACE$(ln%), Lastcharpoint.x, Lastcharpoint.y, cl%, 0, 0, 1
+        Lastcharpoint.x = x1%
+        Lastcharpoint.y = y1%
+        c.blinkcursor cl3%, 1, 2
+        ln% = 0
+CASE backspc
+        ln% = ln% - 1
+        IF (ln% >= 0) THEN
+        Lastcharpoint.x = Lastcharpoint.x - CONST.cspace
+        IF (Lastcharpoint.x < textlimitx1) THEN
+        Lastcharpoint.x = textlimitx2
+        Lastcharpoint.y = Lastcharpoint.y - CONST.linegap
+        END IF
+        a1% = Lastcharpoint.x
+        a2% = Lastcharpoint.y
+        c.dispstring " ", Lastcharpoint.x, Lastcharpoint.y, cl%, 0, 0, 1
+        st$ = LEFT$(st$, LEN(st$) - 1)
+        Lastcharpoint.x = a1%
+        Lastcharpoint.y = a2%
+        c.blinkcursor cl1%, 1, 1
+        ELSE
+        c.blinkcursor cl3%, 1, 1
+        ln% = ln% + 1
+        END IF
+CASE IS > 31 AND k% < 127       'some character
+        IF (Lastcharpoint.x < textlimitx2) THEN
+        ln% = ln% + 1
+        IF (ln% > leng%) THEN
+        ln% = ln% - 1
+        c.blinkcursor cl3%, 1, 1
+        ELSE
+        c.dispstring k$, Lastcharpoint.x, Lastcharpoint.y, cl2%, cl1%, 0, 1
+        st$ = st$ + k$
+        END IF
+        ELSE
+        c.blinkcursor cl3%, 1, 1
+        END IF
+CASE ELSE
+END SELECT
+LOOP
+Lastcharpoint.x = textlimitx1
+Lastcharpoint.y = Lastcharpoint.y + CONST.linegap
+IF (Lastcharpoint.y > textlimity2) THEN Lastcharpoint.y = textlimity1
+'VIEW
+screen.input$ = st$
+END FUNCTION
+
+SUB screen.mousepos
+SHARED Jerry AS mouse, Lastcharpoint AS pixel
+IF (Jerry.xpos <> Jerry.oldxpos OR Jerry.ypos <> Jerry.oldypos) THEN
+x% = Jerry.xpos - midx
+y% = midy - Jerry.ypos
+x$ = STR$(x%)
+y$ = STR$(y%)
+IF (Jerry.xpos < screenlimitx1 OR Jerry.xpos > screenlimitx2) THEN x$ = "ZZZZ"
+IF (Jerry.ypos < screenlimity1 OR Jerry.ypos > screenlimity2) THEN y$ = "ZZZZ"
+x$ = SPACE$(4 - LEN(x$)) + x$
+y$ = SPACE$(4 - LEN(y$)) + y$
+x$ = x$ + ":" + y$
+x1% = Lastcharpoint.x
+y1% = Lastcharpoint.y
+c.dispstring x$, 540, 475, 9, 0, 0, 1
+Lastcharpoint.x = x1%
+Lastcharpoint.y = y1%
+END IF
+END SUB
+
+SUB screen.msg (s$, cl%)
+SHARED Lastcharpoint AS pixel
+s1$ = s$ + SPACE$(80 - LEN(s$))
+cl1% = (cl% + 1) MOD 16
+x1% = 15
+y1% = 475
+SWAP Lastcharpoint.x, x1%
+SWAP Lastcharpoint.y, y1%
+LINE (10, 470)-(530, 480), 0, BF
+c.dispstring s$, Lastcharpoint.x, Lastcharpoint.y, cl%, cl1%, 0, 1
+SWAP Lastcharpoint.x, x1%
+SWAP Lastcharpoint.y, y1%
+END SUB
+
+FUNCTION screen.word$ (s$, no%, s1$, s2$)
+SHARED CONST.separators AS STRING
+s1$ = ""
+s2$ = ""
+ss$ = c.removetab$(s$) + " "
+w1% = 0
+st% = 1
+leng% = LEN(ss$)
+FOR i% = 1 TO LEN(ss$)
+a$ = MID$(ss$, i%, 1)
+    'check if end of word
+    IF (INSTR(CONST.separators, a$)) THEN a1% = 1 ELSE a1% = 0
+    IF (INSTR(CONST.separators, MID$(ss$, st%, 1))) THEN
+    a1% = 0
+    st% = st% + 1
+    END IF
+   
+IF (a1% = 1) THEN
+w1% = w1% + 1
+        'report for word
+        IF (w1% = no%) THEN
+        st$ = MID$(ss$, st%, i% - st%)
+        IF (st$ = "") THEN
+        no% = no% + 1
+        st% = st% + 1
+        END IF
+        IF (w1% <> 1) THEN
+            a1% = 1
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, st% - a1%, 1)) AND (st% - a1% > 0))
+            s1$ = s1$ + MID$(ss$, st% - a1%, 1)
+            a1% = a1% + 1
+            LOOP
+            s1$ = c.reverse$(s1$)
+        ELSE
+        IF (st% > 1) THEN s1$ = LEFT$(ss$, st% - 1) ELSE s1$ = ""
+        END IF
+            a1% = 0
+            DO WHILE (INSTR(CONST.separators, MID$(ss$, i% + a1%, 1)) AND (i% + a1% <= leng%))
+            s2$ = s2$ + MID$(ss$, i% + a1%, 1)
+            a1% = a1% + 1
+            LOOP
+        IF (w1% = no%) THEN EXIT FOR
+        ELSE
+        st% = i% + 1
+        END IF
+END IF
+NEXT
+screen.word$ = st$
+END FUNCTION
+

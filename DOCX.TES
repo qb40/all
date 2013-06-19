@@ -1,0 +1,21 @@
+CLS
+INPUT "File Name"; fl1$
+INPUT "NOT"; n%
+OPEN "B", #1, fl1$
+OPEN "B", #2, "Out.txt"
+SEEK #1, 1
+l1% = ASC("A")
+l2% = ASC("Z")
+l3% = ASC("a")
+l4% = ASC("z")
+FOR i& = 1 TO LOF(1)
+k$ = INPUT$(1, #1)
+IF (n% = 1) THEN k% = NOT (ASC(k$)) ELSE k% = ASC(k$)
+IF (k% = 9 OR k% = 10 OR k% = 13 OR (k% >= l1% AND k% <= l2%) OR (k% >= l3% AND k% <= l4%)) THEN
+k$ = CHR$(k%)
+PUT #2, , k$
+END IF
+NEXT
+CLOSE #1, #2
+SYSTEM
+

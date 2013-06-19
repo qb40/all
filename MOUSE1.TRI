@@ -1,0 +1,10 @@
+DIM Jerry%(10)
+CALL yesmouseshow
+DO
+CALL yesmousestatus(SEG Jerry%(0))
+LOCATE 1, 1
+FOR i% = 0 TO 7
+PRINT Jerry%(i%);
+NEXT
+LOOP
+

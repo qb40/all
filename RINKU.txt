@@ -1,0 +1,9 @@
+Star System ------> Solar System
+Star --> Sun
+Mass -->  34
+Radius -->  34
+Number of planets -->  1
+
+Planet		Radius		Distance		Velocity		Time
+2		 2		 5.672050294724951D-10		 2		 1.78264435403334D-09
+

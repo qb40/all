@@ -1,0 +1,96 @@
+'ฝ ผ ป บ น ธ ท ถ ต ด ณ พ ฟ ภ ม ย ร ฤ ล ฦ ว ศ ษ ส ห ฬ อ ฮ ฯ ะ ั า ำ ิ ี ึ ื
+'$DYNAMIC
+DECLARE FUNCTION rndobj$ (l)
+DECLARE FUNCTION nospc$ (a$)
+
+
+CLS
+SCREEN 12
+PRINT "ษออออออออออออออออออออออออออออออออออออออออออออออออออออออออออป"
+PRINT "บ Analysing 3-D Picture capability ( 3-D ActiveX Control ) บ"
+PRINT "บ               Press any key to start                     บ"
+PRINT "ศออออออออออออออออออออออออออออออออออออออออออออออออออออออออออผ"
+
+k$ = INPUT$(1)
+
+DIM obj$(200)
+FOR i = 1 TO 200
+obj$(i) = rndobj$(50)
+NEXT
+
+VIEW SCREEN (50, 100)-(600, 450)
+FOR i = 1 TO 197 STEP 3
+a1$ = obj$(i)
+a2$ = obj$(i + 1)
+a3$ = obj$(i + 2)
+
+px1 = INT(200 * RND) + 200
+py1 = INT(200 * RND) + 100
+px2 = INT(200 * RND) + 200
+py2 = INT(200 * RND) + 100
+px3 = INT(200 * RND) + 200
+py3 = INT(200 * RND) + 100
+
+FOR j = 1 TO 40
+
+PSET (px1, py1)
+DRAW "S" + STR$(j)
+DRAW a1$
+PSET (px2, py2)
+DRAW "S" + STR$(j)
+DRAW a2$
+PSET (px3, py3)
+DRAW "S" + STR$(j)
+DRAW a3$
+SOUND 21000, 1
+NEXT
+CLS
+NEXT
+
+
+
+REM $STATIC
+FUNCTION nospc$ (a$)
+ad$ = ""
+FOR i = 1 TO LEN(a$)
+d$ = MID$(a$, i, 1)
+IF d$ <> " " THEN ad$ = ad$ + d$
+NEXT
+nospc$ = ad$
+END FUNCTION
+
+FUNCTION rndobj$ (l)
+a$ = ""
+FOR i = 1 TO l
+
+vl = INT(11 * RND) + 1
+SELECT CASE vl
+CASE 2
+k$ = "U" + STR$(INT(20 * RND))
+CASE 3
+k$ = "D" + STR$(INT(20 * RND))
+CASE 4
+k$ = "L" + STR$(INT(20 * RND))
+CASE 5
+k$ = "R" + STR$(INT(20 * RND))
+CASE 6
+k$ = "E" + STR$(INT(20 * RND))
+CASE 7
+k$ = "F" + STR$(INT(20 * RND))
+CASE 8
+k$ = "G" + STR$(INT(20 * RND))
+CASE 9
+k$ = "H" + STR$(INT(20 * RND))
+CASE 10
+k$ = "C" + STR$(INT(15 * RND))
+CASE 11
+k$ = "A" + STR$(INT(3 * RND))
+CASE 12
+k$ = "TA" + STR$(INT(360 * RND))
+CASE ELSE
+END SELECT
+a$ = a$ + nospc$(k$)
+NEXT
+rndobj$ = a$
+END FUNCTION
+

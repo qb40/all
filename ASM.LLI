@@ -1,0 +1,86 @@
+DECLARE SUB asm.loadprog (fl1$, s$)
+DECLARE SUB asm.pokewordi (a1%, mem1&, mem2&)
+DECLARE SUB asm.pokewordl (a1&, mem1&, mem2&)
+DECLARE SUB asm.pokebytei (a1%, mem1&, mem2&)
+DECLARE FUNCTION asm.peekbytei% (mem1&, mem2&)
+DECLARE FUNCTION asm.peekwordi% (mem1&, mem2&)
+DECLARE FUNCTION asm.peekwordl& (mem1&, mem2&)
+DECLARE SUB asm.run (s$, off1&)
+
+CLS
+s$ = ""
+asm.loadprog "notbox.dll", s$
+DIM arr%(2)
+SCREEN 13
+DEF SEG = VARSEG(s$)
+FOR i% = 0 TO 25
+CALL absolute(BYVAL 0, BYVAL 0, BYVAL 319, BYVAL 199, SADD(s$))
+FOR j% = 0 TO 2
+PRINT arr%(j%);
+NEXT
+NEXT
+DEF SEG
+FOR i% = 0 TO 2
+PRINT arr%(i%),
+NEXT
+SYSTEM
+
+SUB asm.loadprog (fl1$, s$)
+fr% = FREEFILE
+OPEN "B", fr%, fl1$
+FOR i& = 1 TO LOF(1)
+s$ = s$ + INPUT$(1, #fr%)
+NEXT
+CLOSE #fr%
+END SUB
+
+FUNCTION asm.peekbytei% (mem1&, mem2&)
+DEF SEG = mem1&
+a1% = PEEK(mem2&)
+DEF SEG
+asm.peekbytei% = a1%
+END FUNCTION
+
+FUNCTION asm.peekwordi% (mem1&, mem2&)
+DEF SEG = mem1&
+a1% = PEEK(mem2&)
+a1% = a1% + PEEK(mem2& + 1) * &H100
+DEF SEG
+asm.peekwordi% = a1%
+END FUNCTION
+
+FUNCTION asm.peekwordl& (mem1&, mem2&)
+DEF SEG = mem1&
+a1& = PEEK(mem2&)
+a1& = a1& + PEEK(mem2& + 1) * &H100
+DEF SEG
+asm.peekwordl& = a1&
+END FUNCTION
+
+SUB asm.pokebytei (a1%, mem1&, mem2&)
+DEF SEG = mem1&
+POKE mem2&, a1% AND &HFF
+DEF SEG
+END SUB
+
+SUB asm.pokewordi (a1%, mem1&, mem2&)
+DEF SEG = mem1&
+POKE mem2&, a1% \ &H100
+POKE mem2& + 1, a1% AND &HFF
+DEF SEG
+END SUB
+
+SUB asm.pokewordl (a1&, mem1&, mem2&)
+DEF SEG = mem1&
+POKE mem2&, (a1& AND &HFF00) \ &H100
+POKE mem2& + 1, a1& AND &HFF
+DEF SEG
+END SUB
+
+SUB asm.run (s$, off1&)
+DEF SEG = VARSEG(s$)
+mem1& = SADD(s$) + off1&
+CALL absolute(mem1&)
+DEF SEG
+END SUB
+

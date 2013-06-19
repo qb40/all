@@ -1,0 +1,59 @@
+'view Sld files
+
+
+DECLARE FUNCTION crc (a AS INTEGER)
+DECLARE FUNCTION nospc$ (s$)
+
+null$ = CHR$(0)
+
+INPUT "SLD file name"; ff$
+INPUT "Time gap"; t
+
+OPEN "B", #3, ff$ + ".sld"
+SEEK #3, 1
+read$ = INPUT$(2, #3)
+ss = ASC(LEFT$(read$, 1)) + ASC(RIGHT$(read$, 1))
+CLOSE #3
+
+CLS
+SCREEN 13
+
+FOR ijj = 1 TO ss
+fff$ = nospc$(ff$ + STR$(ijj) + ".pic")
+OPEN "B", #1, fff$
+SEEK #1, 1
+read$ = INPUT$(2, #1)
+xx = ASC(LEFT$(read$, 1)) + ASC(RIGHT$(read$, 1))
+SEEK #1, 3
+read$ = INPUT$(2, #1)
+yy = ASC(LEFT$(read$, 1)) + ASC(RIGHT$(read$, 1))
+y = 0
+x = 0
+
+FOR i = 1 TO LOF(1)
+cl = ASC(INPUT$(1, #1) + null$)
+LINE (x, yy - y)-(x, yy - y), cl
+x = x + 1
+IF (x > xx) THEN
+y = y + 1
+x = 0
+END IF
+NEXT
+CLOSE #1
+SOUND 21000, t
+
+NEXT
+SYSTEM
+
+FUNCTION crc (a AS INTEGER)
+IF (a < 0) THEN crc = 0 ELSE crc = a
+END FUNCTION
+
+FUNCTION nospc$ (s$)
+FOR i = 1 TO LEN(s$)
+a$ = MID$(s$, i, 1)
+IF (a$ <> " ") THEN b$ = b$ + a$
+NEXT
+nospc$ = b$
+END FUNCTION
+

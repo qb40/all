@@ -1,0 +1,125 @@
+DEFLNG P
+
+null$ = CHR$(0)
+CLS
+INPUT "Bitamp file"; ff$
+INPUT "X-resolution(normally less)(1 less for 48*48)"; xx
+INPUT "Y-resolution(same)"; yy
+INPUT "Position start(69 for 48*48)"; p
+INPUT "Error"; e
+
+CLS
+SCREEN 12
+xx = xx - 1
+x = 0
+y = 0
+
+pblk = xx * yy
+ps1 = p - 1
+ps2 = ps1 + pblk
+ps3 = ps2 + pblk
+
+OPEN "B", #1, ff$
+en = LOF(1)
+
+cnt:
+ps1 = ps1 + 1
+SEEK #1, ps1
+r = INT((ASC(INPUT$(1, #1) + null$) / 128) + .5)
+
+
+ps2 = ps2 + 1
+SEEK #1, ps2
+g = INT((ASC(INPUT$(1, #1) + null$) / 128) + .5)
+
+
+ps3 = ps3 + 1
+SEEK #1, ps3
+b = INT((ASC(INPUT$(1, #1) + null$) / 128) + .5)
+
+vl = (r * 100) + (g * 10) + b
+SELECT CASE vl
+
+CASE 0
+cl = 0
+CASE 1
+cl = 1
+CASE 10
+cl = 2
+CASE 11
+cl = 3
+CASE 100
+cl = 4
+CASE 101
+cl = 5
+CASE 110
+cl = 6
+CASE 111
+cl = 7
+
+CASE 2
+cl = 9
+CASE 12
+cl = 3
+CASE 112
+cl = 9
+CASE 102
+cl = 5
+
+
+CASE 20
+cl = 10
+CASE 21
+cl = 3
+CASE 121
+cl = 10
+CASE 120
+cl = 6
+
+
+CASE 22
+cl = 11
+CASE 122
+cl = 11
+
+CASE 200
+cl = 12
+CASE 211
+cl = 12
+CASE 210
+cl = 6
+CASE 201
+cl = 5
+
+
+CASE 202
+cl = 13
+CASE 212
+cl = 13
+
+CASE 220
+cl = 14
+CASE 221
+cl = 14
+
+CASE 222
+cl = 15
+
+CASE ELSE
+SOUND 3000, e
+
+END SELECT
+x = x + 1
+
+IF (x > xx) THEN
+x = 0
+y = y + 1
+END IF
+
+LINE (x, yy - y)-(x, yy - y), cl
+
+IF (ps3 < en OR y <= yy) THEN GOTO cnt
+
+CLOSE #1
+SOUND 2000, 10
+

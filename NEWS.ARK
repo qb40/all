@@ -1,0 +1,15 @@
+DECLARE SUB arc ()
+
+
+
+SCREEN 13
+arc
+
+SUB arc
+FOR i% = 0 TO 319
+FOR j% = 0 TO 199
+PSET (i%, j%), ABS(LOG(ABS(SIN(2.09 + i% * .008)))) * 10
+NEXT
+NEXT
+END SUB
+

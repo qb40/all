@@ -1,0 +1,37 @@
+DEFLNG P
+
+null$ = CHR$(0)
+CLS
+INPUT "Bitamp file"; ff$
+INPUT "X-resolution"; xx
+INPUT "Y-resolution"; yy
+INPUT "Position start(69 for 48*48)"; p
+INPUT "Error"; e
+
+CLS
+SCREEN 13
+
+x = 0
+y = 0
+ps = p
+
+OPEN "B", #1, ff$
+en = LOF(1)
+
+cnt: SEEK #1, ps
+cl = ASC(INPUT$(1, #1) + null$)
+ps = ps + 1
+x = x + 1
+
+IF (x > xx) THEN
+x = 0
+y = y + 1
+END IF
+
+LINE (x, yy - y)-(x, yy - y), 255 - cl
+
+IF (ps < en OR y <= yy) THEN GOTO cnt
+
+CLOSE #1
+
+

@@ -1,0 +1,3 @@
+INPUT "Program File"; fl1$
+SHELL "link /qu " + fl1$ + ".lib, " + fl1$ + ".qlb, null.lst, bqlb40.lib"
+

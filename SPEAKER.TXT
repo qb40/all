@@ -1,0 +1,936 @@
+DECLARE SUB word (s AS STRING, x AS INTEGER, y AS INTEGER, t1 AS INTEGER, p1 AS INTEGER, c AS INTEGER, p AS INTEGER, f AS INTEGER, t AS DOUBLE)
+DECLARE FUNCTION mainmenu% (h$, hc%, u%, os%, oc%, bx1%, by1%, bx2%, by2%, bc%, bt%)
+DECLARE SUB rub (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER)
+DECLARE FUNCTION menu$ (s$, x1%, y1%, x2%, y2%, t$, b$, f%, tt%, c%, bc%, ib%)
+DECLARE SUB pnt (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, c%)
+
+DECLARE SUB rub (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER)
+DECLARE SUB pnt (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, c%)
+DECLARE FUNCTION menu$ (s$, x1%, y1%, x2%, y2%, t$, b$, f%, tt%, c%, bc%, ib%)
+DECLARE FUNCTION mainmenu% (h$, hc%, u%, os%, oc%, bx1%, by1%, bx2%, by2%, bc%, bt%)
+DECLARE SUB linez (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, t AS INTEGER, c AS INTEGER)
+DECLARE SUB liney (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, t AS INTEGER, c AS INTEGER)
+DECLARE SUB linex (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, t AS INTEGER, c AS INTEGER)
+DECLARE SUB ld ()
+DECLARE SUB expand (s AS STRING, x AS INTEGER, y AS INTEGER, t1 AS INTEGER, p1 AS INTEGER, c AS INTEGER, p AS INTEGER, f AS INTEGER, t AS DOUBLE)
+DECLARE SUB char (s AS STRING, x AS INTEGER, y AS INTEGER, t AS INTEGER, pp AS INTEGER, c AS INTEGER)
+DECLARE SUB portout (s AS STRING, p AS LONG)
+DECLARE FUNCTION randnum (a1 AS INTEGER, a2 AS INTEGER)
+DECLARE FUNCTION portin$ (l AS INTEGER, p AS LONG)
+REM $STATIC
+DEFLNG I, P
+'============================Declaring Keys==================================
+CONST backspc = 8, enter = 13, htab = 9
+CONST left = 75, right = 77, up = 72, down = 80
+CONST uplt = 71, uprt = 73, dnlt = 79, dnrt = 81
+CONST insert = 82, home = 71, pageup = 73, del = 83, endk = 79, pagedn = 81
+CONST kf1 = 59, kf2 = 60, kf3 = 61, kf4 = 62, kf5 = 63, kf6 = 64, kf7 = 65, kf8 = 66, kf9 = 67, kf10 = 68, kf11 = 133, kf12 = 134
+'-----------------------------Keys declared---------------------------------
+a2: CLS
+COLOR 14
+PRINT "Your port Manager"
+COLOR 15
+PRINT "================="
+PRINT ""
+PRINT ""
+COLOR 1
+PRINT "1 - Send data to a port"
+PRINT "2 - Read data from a port"
+PRINT "3 - Try finding input ports"
+a1: k$ = INPUT$(1)
+IF k$ = CHR$(27) THEN SYSTEM
+IF k$ = "1" THEN GOTO z1
+IF k$ = "2" THEN GOTO z2
+IF k$ = "3" THEN GOTO z3
+GOTO a1
+z1: CLS
+INPUT "Port number -->", p
+INPUT "Text to be sent : ", t$
+INPUT "Number of times to be sent : ", it
+FOR i = 1 TO it
+portout t$, p
+NEXT
+PRINT "Data sent."
+INPUT "Continue(Y/N)-->", z$
+IF LCASE$(z$) = "n" THEN GOTO a2 ELSE GOTO z1
+
+z2: CLS
+INPUT "Port number -->", p
+INPUT "Length of text to input : ", t%
+z$ = portin$(t%, p)
+PRINT "Data read."
+PRINT "Data recieved : "; z$
+INPUT "Continue(Y/N)-->", z$
+IF LCASE$(z$) = "n" THEN GOTO a2 ELSE GOTO z2
+
+z3: DIM sp(1000)
+CLS
+INPUT "Sceen mode"; sc
+SCREEN sc
+INPUT "Port start -->", ip
+INPUT "Port end -->", ep
+IF ip < 0 THEN ip = 0
+IF ep > 65535 THEN ep = 65535
+COLOR 14
+LOCATE 22, 1
+diff = ep - ip
+FOR i = ip TO ep
+LOCATE 3, 20
+PRINT "Port :"; i; "            "
+IF sc <> 0 THEN LINE (0, 200)-(((i - ip) / diff) * 320, 200), 13
+DIM port(301)
+FOR dj% = 0 TO 300
+k$ = INKEY$
+IF k$ = CHR$(9) THEN GOTO b
+port(dj%) = INP(i)
+NEXT
+b: LOCATE 4, 20
+PRINT "Checking port :"; i; "    "
+asd = port(0)
+FOR jd = 1 TO 300
+IF port(jd) <> asd THEN asd = 1
+NEXT
+IF asd = 1 THEN
+ctr = ctr + 1
+sp(ctr) = i
+END IF
+asd = 0
+NEXT
+CLS
+PRINT ctr; "input port(s) found"
+IF ctr > 0 THEN
+PRINT "Input ports :";
+FOR x = 1 TO UBOUND(sp)
+IF sp(x) <> 0 THEN PRINT sp(x); ",";
+NEXT
+END IF
+DO UNTIL k$ = CHR$(27)
+k$ = INPUT$(1)
+LOOP
+ERASE port, sp
+ctr = 0
+GOTO a2
+END
+DEFSNG I, P
+
+
+setdefault:  ERASE clrs
+DIM clrs(16, 3)
+RESTORE
+FOR i = 0 TO 15
+FOR j = 0 TO 2
+READ clv
+clrs(i, j) = clv
+NEXT
+NEXT
+RETURN
+
+setcolors: RESTORE
+FOR i = 0 TO 15
+clv1 = clrs(i, 0): clv2 = clrs(i, 1): clv3 = clrs(i, 2)
+PALETTE i, 65536 * clv3 + 256 * clv2 + clv1
+NEXT
+RETURN
+
+sclear: FOR i = 1 TO 63
+FOR j = 0 TO 15
+clv1 = clrs(j, 0): clv2 = clrs(j, 1): clv3 = clrs(j, 2)
+IF clv1 < i THEN clv1 = i
+IF clv2 < i THEN clv2 = i
+IF clv3 < i THEN clv3 = i
+PALETTE j, 65536 * clv3 + 256 * clv2 + clv1
+NEXT
+SOUND 21000, .5
+NEXT
+CLS
+GOSUB setdefault
+GOSUB setcolors
+FOR i = 62 TO 0 STEP -1
+PALETTE 0, 65536 * i + 256 * i + i
+SOUND 21000, .6
+NEXT
+RETURN
+
+DATA 0,0,0, 0,0,43, 0,43,0, 0,43,43, 43,0,0, 43,0,43, 43,43,0, 43,43,43, 10,10,10, 20,20,63, 20,63,20, 20,63,63, 63,20,20, 63,20,63, 63,63,20, 63,63,63
+
+
+SUB char (s AS STRING, x AS INTEGER, y AS INTEGER, t AS INTEGER, pp AS INTEGER, c AS INTEGER)
+IF pp = 500 THEN p = .5 ELSE p = pp
+SELECT CASE s$
+CASE "A"
+linez x, y + 9 * p, x, y + 2 * p, t, c
+linez x, y + 2 * p, x + 2 * p, y, t, c
+linez x + 2 * p, y, x + 4 * p, y, t, c
+linez x + 4 * p, y, x + 6 * p, y + 2 * p, t, c
+linez x + 6 * p, y + 2 * p, x + 6 * p, y + 9 * p, t, c
+linez x, y + 5 * p, x + 6 * p, y + 5 * p, t, c
+
+CASE "B"
+linez x, y, x, y + 9 * p, t, c
+linez x, y, x + 6 * p, y, t, c
+linez x + 6 * p, y, x + 6 * p, y + 6 * p, t, c
+linez x, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+linez x + 6 * p, y + 5 * p, x + 6 * p, y + 9 * p, t, c
+linez x + 6 * p, y + 9 * p, x, y + 9 * p, t, c
+
+CASE "C"
+linez x + 6 * p, y, x + 2 * p, y, t, c
+linez x + 2 * p, y, x, y + 2 * p, t, c
+linez x, y + 2 * p, x, y + 7 * p, t, c
+linez x, y + 7 * p, x + 2 * p, y + 9 * p, t, c
+linez x + 2 * p, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+
+CASE "D"
+linez x, y, x + 4 * p, y, t, c
+linez x + 4 * p, y, x + 6 * p, y + 2 * p, t, c
+linez x + 6 * p, y + 2 * p, x + 6 * p, y + 7 * p, t, c
+linez x + 6 * p, y + 7 * p, x + 4 * p, y + 9 * p, t, c
+linez x + 4 * p, y + 9 * p, x, y + 9 * p, t, c
+linez x, y + 9 * p, x, y, t, c
+
+CASE "E"
+linez x + 6 * p, y, x, y, t, c
+linez x, y, x, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+linez x, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+
+CASE "F"
+linez x + 6 * p, y, x, y, t, c
+linez x, y, x, y + 9 * p, t, c
+linez x, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+
+CASE "G"
+linez x + 6 * p, y, x + 1 * p, y, t, c
+linez x + 1 * p, y, x, y + 1 * p, t, c
+linez x, y + 1 * p, x, y + 8 * p, t, c
+linez x, y + 8 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 5 * p, y + 9 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 6 * p, y + 8 * p, x + 6 * p, y + 5 * p, t, c
+linez x + 6 * p, y + 5 * p, x + 4 * p, y + 5 * p, t, c
+linez x + 4 * p, y + 5 * p, x + 4 * p, y + 7 * p, t, c
+
+CASE "H"
+linez x, y, x, y + 9 * p, t, c
+linez x + 6 * p, y, x + 6 * p, y + 9 * p, t, c
+linez x, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+
+CASE "I"
+linez x, y, x + 6 * p, y, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+linez x + 3 * p, y, x + 3 * p, y + 9 * p, t, c
+
+CASE "J"
+linez x, y, x + 6 * p, y, t, c
+linez x + 4 * p, y, x + 4 * p, y + 8 * p, t, c
+linez x + 4 * p, y + 8 * p, x + 3 * p, y + 9 * p, t, c
+linez x + 3 * p, y + 9 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 1 * p, y + 9 * p, x, y + 8 * p, t, c
+linez x, y + 8 * p, x, y + 6 * p, t, c
+
+CASE "K"
+linez x, y, x, y + 9 * p, t, c
+linez x + 6 * p, y, x + 6 * p, y + 1 * p, t, c
+linez x + 6 * p, y + 1 * p, x, y + 4 * p, t, c
+linez x, y + 4 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 6 * p, y + 8 * p, x + 6 * p, y + 9 * p, t, c
+
+CASE "L"
+linez x, y, x, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+
+CASE "M"
+linez x, y + 9 * p, x, y, t, c
+linez x, y, x + 3 * p, y + 4 * p, t, c
+linez x + 3 * p, y + 4 * p, x + 6 * p, y, t, c
+linez x + 6 * p, y, x + 6 * p, y + 9 * p, t, c
+
+CASE "N"
+linez x, y + 9 * p, x, y, t, c
+linez x, y, x + 6 * p, y + 9 * p, t, c
+linez x + 6 * p, y + 9 * p, x + 6 * p, y, t, c
+
+CASE "O"
+linez x, y, x + 6 * p, y, t, c
+linez x, y, x, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+linez x + 6 * p, y, x + 6 * p, y + 9 * p, t, c
+
+CASE "P"
+linez x, y + 5 * p, x + 6 * p, y + 5 * p, t, c
+linez x + 6 * p, y, x + 6 * p, y + 5 * p, t, c
+linez x, y, x + 6 * p, y, t, c
+linez x, y, x, y + 9 * p, t, c
+
+CASE "Q"
+linez x, y, x + 4 * p, y, t, c
+linez x, y, x, y + 9 * p, t, c
+linez x + 4 * p, y, x + 4 * p, y + 9 * p, t, c
+linez x, y + 9 * p, x + 4 * p, y + 9 * p, t, c
+linez x + 3 * p, y + 5 * p, x + 3 * p, y + 6 * p, t, c
+linez x + 3 * p, y + 6 * p, x + 6 * p, y + 9 * p, t, c
+
+CASE "R"
+linez x, y + 9 * p, x, y, t, c
+linez x, y, x + 6 * p, y, t, c
+linez x + 6 * p, y, x + 6 * p, y + 5 * p, t, c
+linez x + 6 * p, y + 5 * p, x, y + 5 * p, t, c
+linez x, y + 5 * p, x + 6 * p, y + 9 * p, t, c
+
+CASE "S"
+linez x, y, x + 6 * p, y, t, c
+linez x, y, x, y + 4 * p, t, c
+linez x, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+linez x + 6 * p, y + 4 * p, x + 6 * p, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+
+CASE "T"
+linez x, y, x + 6 * p, y, t, c
+linez x + 3 * p, y, x + 3 * p, y + 9 * p, t, c
+
+CASE "U"
+linez x, y, x, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+linez x + 6 * p, y, x + 6 * p, y + 9 * p, t, c
+
+CASE "V"
+linez x, y, x + 3 * p, y + 9 * p, t, c
+linez x + 3 * p, y + 9 * p, x + 6 * p, y, t, c
+
+CASE "W"
+linez x, y, x, y + 9 * p, t, c
+linez x, y + 9 * p, x + 3 * p, y + 5 * p, t, c
+linez x + 3 * p, y + 5 * p, x + 6 * p, y + 9 * p, t, c
+linez x + 6 * p, y + 9 * p, x + 6 * p, y, t, c
+
+CASE "X"
+linez x, y, x + 6 * p, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y, t, c
+
+CASE "Y"
+linez x, y, x + 3 * p, y + 5 * p, t, c
+linez x + 3 * p, y + 5 * p, x + 6 * p, y, t, c
+linez x + 3 * p, y + 5 * p, x + 3 * p, y + 9 * p, t, c
+
+CASE "Z"
+linez x, y, x + 6 * p, y, t, c
+linez x + 6 * p, y, x, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+
+CASE "."
+linez x, y + 9 * p, x, y + 9 * p, t, c
+CASE ","
+linez x + 1 * p, y + 9 * p, x, y + 10 * p, t, c
+CASE " "
+CASE "1"
+linez x + 1 * p, y + 1 * p, x + 2 * p, y, t, c
+linez x + 2 * p, y, x + 2 * p, y + 9 * p, t, c
+linez x, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+CASE "3"
+linez x, y + 1 * p, x + 1 * p, y, t, c
+linez x + 1 * p, y, x + 5 * p, y, t, c
+linez x + 5 * p, y, x + 6 * p, y + 1 * p, t, c
+linez x + 6 * p, y + 1 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 1 * p, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 5 * p, y + 9 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+CASE "4"
+linez x + 4 * p, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 5 * p, y, t, c
+linez x + 5 * p, y, x, y + 5 * p, t, c
+linez x, y + 5 * p, x, y + 6 * p, t, c
+linez x, y + 6 * p, x + 6 * p, y + 6 * p, t, c
+CASE "5"
+linez x, y, x + 6 * p, y, t, c
+linez x, y, x, y + 3 * p, t, c
+linez x, y + 3 * p, x + 5 * p, y + 3 * p, t, c
+linez x + 5 * p, y + 3 * p, x + 6 * p, y + 4 * p, t, c
+linez x + 6 * p, y + 4 * p, x + 6 * p, y + 9 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 6 * p, y + 9 * p, t, c
+linez x, y + 8 * p, x + 1, y + 9 * p, t, c
+CASE "6"
+linez x + 6 * p, y + 1 * p, x + 5 * p, y, t, c
+linez x + 5 * p, y, x + 1 * p, y, t, c
+linez x + 1 * p, y, x, y + 1 * p, t, c
+linez x, y + 1 * p, x, y + 8 * p, t, c
+linez x, y + 8 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 5 * p, y + 9 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 6 * p, y + 8 * p, x + 6 * p, y + 5 * p, t, c
+linez x + 6 * p, y + 5 * p, x + 5 * p, y + 4 * p, t, c
+linez x + 5 * p, y + 4 * p, x, y + 4 * p, t, c
+CASE "7"
+linez x, y, x + 6 * p, y, t, c
+linez x + 6 * p, y, x + 6 * p, y + 3 * p, t, c
+linez x + 6 * p, y + 3 * p, x + 4 * p, y + 5 * p, t, c
+linez x + 4 * p, y + 5 * p, x + 4 * p, y + 9 * p, t, c
+CASE "8"
+linez x + 1 * p, y, x + 5 * p, y, t, c
+linez x + 5 * p, y, x + 6 * p, y + 1 * p, t, c
+linez x + 6 * p, y + 1 * p, x + 6 * p, y + 3 * p, t, c
+linez x + 6 * p, y + 3 * p, x + 5 * p, y + 4 * p, t, c
+linez x + 5 * p, y + 4 * p, x + 1 * p, y + 4 * p, t, c
+linez x + 1 * p, y + 4 * p, x, y + 3 * p, t, c
+linez x, y + 3 * p, x, y + 1 * p, t, c
+linez x, y + 1 * p, x + 1 * p, y, t, c
+linez x, y + 5 * p, x + 1 * p, y + 4 * p, t, c
+linez x + 5 * p, y + 4 * p, x + 6 * p, y + 5 * p, t, c
+linez x, y + 5 * p, x, y + 8 * p, t, c
+linez x + 6 * p, y + 5 * p, x + 6 * p, y + 8 * p, t, c
+linez x, y + 8 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 5 * p, y + 9 * p, t, c
+CASE "9"
+linez x + 1 * p, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+linez x, y + 3 * p, x + 1, y + 4 * p, t, c
+linez x, y + 1 * p, x, y + 3 * p, t, c
+linez x, y + 1 * p, x + 1 * p, y, t, c
+linez x + 1 * p, y, x + 5 * p, y, t, c
+linez x + 5 * p, y, x + 6 * p, y + 1 * p, t, c
+linez x + 6 * p, y + 1 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 6 * p, y + 8 * p, x + 5 * p, y + 9 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 1 * p, y + 9 * p, t, c
+linez x, y + 8 * p, x + 1 * p, y + 9 * p, t, c
+CASE "0"
+linez x + 1 * p, y, x + 5 * p, y, t, c
+linez x + 5 * p, y, x + 6 * p, y + 1 * p, t, c
+linez x + 6 * p, y + 1 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 5 * p, y + 9 * p, t, c
+linez x, y + 8 * p, x + 1 * p, y + 9 * p, t, c
+linez x, y + 1 * p, x, y + 8 * p, t, c
+linez x, y + 1 * p, x + 1 * p, y, t, c
+CASE "["
+linez x, y, x + 1 * p, y, t, c
+linez x, y + 9 * p, x + 1 * p, y + 9 * p, t, c
+linez x, y, x, y + 9 * p, t, c
+CASE "]"
+linez x, y, x + 1 * p, y, t, c
+linez x, y + 9 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 1 * p, y, x + 1 * p, y + 9 * p, t, c
+CASE "\"
+linez x, y, x + 6 * p, y + 9 * p, t, c
+CASE "/"
+linez x, y + 9 * p, x + 6 * p, y, t, c
+CASE "`"
+linez x, y, x + 1 * p, y + 1 * p, t, c
+CASE "-"
+linez x, y + 4 * p, x + 6 * p, y + 4 * p, t, c
+CASE "="
+linez x, y + 3 * p, x + 6 * p, y + 3 * p, t, c
+linez x, y + 5 * p, x + 6 * p, y + 5 * p, t, c
+CASE "|"
+linez x + 3 * p, y, x + 3 * p, y + 3 * p, t, c
+linez x + 3 * p, y + 5 * p, x + 3 * p, y + 9 * p, t, c
+CASE ":"
+linez x + 3 * p, y + 3 * p, x + 3 * p, y + 3 * p, t, c
+linez x + 3 * p, y + 5 * p, x + 3 * p, y + 5 * p, t, c
+CASE "*"
+linez x + 2 * p, y + 3 * p, x + 4 * p, y + 5 * p, t, c
+linez x + 2 * p, y + 5 * p, x + 4 * p, y + 3 * p, t, c
+linez x + 3 * p, y + 3 * p, x + 3 * p, y + 5 * p, t, c
+CASE "+"
+linez x + 3 * p, y + 3 * p, x + 3 * p, y + 5 * p, t, c
+linez x + 2 * p, y + 4 * p, x + 4 * p, y + 4 * p, t, c
+CASE "!"
+linez x + 1 * p, y, x + 1 * p, y + 7 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 1 * p, y + 9 * p, t, c
+CASE "@"
+linez x + 5 * p, y + 9 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 1 * p, y + 9 * p, x, y + 8 * p, t, c
+linez x, y + 8 * p, x, y + 1 * p, t, c
+linez x, y + 1 * p, x + 1 * p, y, t, c
+linez x + 1 * p, y, x + 5 * p, y, t, c
+linez x + 5 * p, y, x + 6 * p, y + 1 * p, t, c
+linez x + 6 * p, y + 1 * p, x + 6 * p, y + 7 * p, t, c
+linez x + 6 * p, y + 7 * p, x + 2 * p, y + 7 * p, t, c
+linez x + 2 * p, y + 7 * p, x + 2 * p, y + 2 * p, t, c
+linez x + 2 * p, y + 2 * p, x + 5 * p, y + 2 * p, t, c
+linez x + 5 * p, y + 2 * p, x + 6 * p, y + 3 * p, t, c
+CASE "#"
+linez x + 2 * p, y, x + 2 * p, y + 9 * p, t, c
+linez x + 4 * p, y, x + 4 * p, y + 9 * p, t, c
+linez x, y + 3 * p, x + 6 * p, y + 4 * p, t, c
+linez x, y + 5 * p, x + 6 * p, y + 5 * p, t, c
+CASE "$"
+linez x + 6 * p, y + 1 * p, x + 5 * p, y, t, c
+linez x + 5 * p, y, x + 1 * p, y, t, c
+linez x + 1 * p, y, x, y + 1 * p, t, c
+linez x, y + 1 * p, x + 6 * p, y + 8 * p, t, c
+linez x + 6 * p, y + 8 * p, x + 5 * p, y + 9 * p, t, c
+linez x + 5 * p, y + 9 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 1 * p, y + 9 * p, x, y + 8 * p, t, c
+linez x + 3 * p, y, x + 3 * p, y + 9 * p, t, c
+CASE "%"
+linez x, y + 9 * p, x + 6 * p, y, t, c
+linez x + 2 * p, y + 3 * p, x + 2 * p, y + 3 * p, t, c
+linez x + 4 * p, y + 5 * p, x + 4 * p, y + 5 * p, t, c
+CASE "^"
+linez x + 1 * p, y + 2 * p, x + 3 * p, y, t, c
+linez x + 3 * p, y, x + 5 * p, y + 2 * p, t, c
+CASE "&"
+linez x + 6 * p, y + 9 * p, x, y + 1 * p, t, c
+linez x, y + 1 * p, x + 1 * p, y, t, c
+linez x + 1 * p, y, x + 2 * p, y, t, c
+linez x + 2 * p, y, x, y + 6 * p, t, c
+linez x, y + 6 * p, x, y + 8 * p, t, c
+linez x, y + 8 * p, x + 1 * p, y + 9 * p, t, c
+linez x + 1 * p, y + 9 * p, x + 4 * p, y + 9 * p, t, c
+linez x + 4 * p, y + 9 * p, x + 6 * p, y + 7 * p, t, c
+CASE "("
+linez x + 4 * p, y, x + 3 * p, y + 2 * p, t, c
+linez x + 4 * p, y + 9 * p, x + 3 * p, y + 7 * p, t, c
+linez x + 4 * p, y + 2 * p, x + 4 * p, y + 7 * p, t, c
+CASE ")"
+linez x + 2 * p, y, x + 3 * p, y + 2 * p, t, c
+linez x + 2 * p, y + 9 * p, x + 3 * p, y + 7 * p, t, c
+linez x + 3 * p, y + 2 * p, x + 3 * p, y + 7 * p, t, c
+CASE "{"
+linez x + 4 * p, y, x + 3 * p, y + 1 * p, t, c
+linez x + 4 * p, y + 9 * p, x + 3 * p, y + 8 * p, t, c
+
+
+
+
+
+
+CASE ELSE
+FOR i% = 0 TO 6
+linez x + i% * p, y, x + i% * p, y + 9 * p, t, c
+NEXT
+
+END SELECT
+END SUB
+
+SUB expand (s AS STRING, x AS INTEGER, y AS INTEGER, t1 AS INTEGER, p1 AS INTEGER, c AS INTEGER, p AS INTEGER, f AS INTEGER, t AS DOUBLE)
+FOR i% = 0 TO p
+word s$, x, y, t1, p1, 0, i% - 1, f, t
+word s$, x, y, t1, p1, c, i%, f, t
+NEXT
+END SUB
+
+SUB ld
+CLS
+expand "LOADING . . .", 25, 20, 6, 4, 15, 38, 21000, 0
+FOR i% = 0 TO 630 STEP 63
+j = RND(1)
+FOR ij% = 0 TO 62
+PALETTE 6, 65536 * FIX(j * 25) + 256 * FIX(j * 25) + FIX(i% / 10)
+PALETTE 7, 65536 * FIX(j * 15) + 256 * FIX(j * 15) + FIX(i% / 10)
+ti% = i% + ij%
+LINE (0, 300)-(ti% - 1, 297), 0
+LINE (0, 300)-(ti% - 1, 303), 0
+LINE (0, 300)-(ti%, 297), 6
+LINE (0, 300)-(ti%, 298), 6
+LINE (0, 300)-(ti%, 299), 6
+LINE (0, 300)-(ti%, 300), 6
+LINE (0, 300)-(ti%, 301), 6
+LINE (0, 300)-(ti%, 302), 6
+LINE (0, 300)-(ti%, 303), 6
+CIRCLE (ti%, 300), 3, 7
+SOUND 21000, .15
+NEXT
+NEXT
+END SUB
+
+SUB linex (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, t AS INTEGER, c AS INTEGER)
+IF t >= 1 THEN LINE (x1, y1)-(x2, y2), c
+FOR i = 2 TO t
+z% = FIX(i / 2)
+s = i MOD 2
+IF s = 0 THEN s = 1 ELSE s = -1
+z% = z% * s
+LINE (x1, y1 + z%)-(x2, y2 + z%), c
+NEXT
+END SUB
+
+SUB liney (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, t AS INTEGER, c AS INTEGER)
+IF t >= 1 THEN LINE (x1, y1)-(x2, y2), c
+FOR i = 2 TO t
+z% = FIX(i / 2)
+s = i MOD 2
+IF s = 0 THEN s = 1 ELSE s = -1
+z% = z% * s
+LINE (x1 + z%, y1)-(x2 + z%, y2), c
+NEXT
+END SUB
+
+SUB linez (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, t AS INTEGER, c AS INTEGER)
+IF ABS(x1 - x2) > ABS(y1 - y2) THEN linex x1, y1, x2, y2, t, c ELSE liney x1, y1, x2, y2, t, c
+END SUB
+
+FUNCTION mainmenu% (h$, hc%, u%, os%, oc%, bx1%, by1%, bx2%, by2%, bc%, bt%)
+SHARED option$, optionx%, cps$
+DIM curl%(80), curr%(80)
+linez 15, 90, 10, 95, 4, 2
+linez 10, 95, 15, 100, 4, 2
+linez 20, 90, 15, 95, 4, 2
+linez 15, 95, 20, 100, 4, 2
+GET (10, 90)-(20, 100), curl%
+rub 5, 90, 25, 200
+linez 10, 90, 15, 95, 4, 2
+linez 15, 95, 10, 100, 4, 2
+linez 15, 90, 20, 95, 4, 2
+linez 20, 95, 15, 100, 4, 2
+GET (10, 90)-(20, 100), curr%
+rub 5, 90, 25, 100
+bchp% = FIX(ABS(bx2% - bx1%) / 10)
+bxas% = bx1% + 5
+bxad% = by1% + 5
+CLS
+expand h$, 25, 5, 5, 4, hc%, 38, 21000, 0
+linez 10, 100, 630, 100, 6, u%
+opts% = UBOUND(option$)
+FOR i% = 0 TO opts% - 1
+expand option$(i%), optionx%(i%), os% + (i% * 20), 3, 1, oc%, 15, 21000, 0
+NEXT
+expand "INTELLIGENT MINDS CORPORATION", 380, 450, 2, 1, 2, 9, 21000, 0
+'//////////////////////////////Menu created
+
+linez bx1%, by1%, bx2%, by1%, 5, bc%   '+++++++Drawing text box
+linez bx2%, by1%, bx2%, by2%, 5, bc%
+linez bx2%, by2%, bx1%, by2%, 5, bc%
+linez bx1%, by2%, bx1%, by1%, 5, bc%
+
+'////////////////////////////Working menu
+cp$ = cps$(0)
+cpos% = 1
+inst% = 0
+DO UNTIL k$ = CHR$(enter)
+k$ = INKEY$
+IF inst% MOD 5000 = 0 THEN
+CIRCLE (10 + FIX(inst% / 1000), 470), 3, 6
+CIRCLE (15 + FIX(inst% / 1000), 470), 3, 1
+END IF
+
+SELECT CASE k$
+CASE CHR$(0) + CHR$(up)
+xcv% = optionx%(cpos% - 1)
+zxc% = os% + (cpos% - 1) * 20
+rub xcv% - 80, zxc% - 5, xcv% - 15, zxc% + 15
+xcv% = xcv% + (LEN(option$(cpos% - 1)) * 15)
+rub xcv% + 15, zxc% - 5, xcv% + 80, zxc% + 15
+rub bx1% + 3, by1% + 3, bx2% - 3, by2% - 3
+cpos% = cpos% - 1
+IF cpos% = 0 THEN cpos% = 5
+cp$ = cps$(cpos% - 1)
+chpr% = 0
+CASE CHR$(0) + CHR$(down)
+xcv% = optionx%(cpos% - 1)
+zxc% = os% + (cpos% - 1) * 20
+rub xcv% - 80, zxc% - 5, xcv% - 15, zxc% + 15
+xcv% = xcv% + (LEN(option$(cpos% - 1)) * 15)
+rub xcv% + 15, zxc% - 5, xcv% + 80, zxc% + 15
+rub bx1% + 3, by1% + 3, bx2% - 3, by2% - 3
+cpos% = cpos% + 1
+IF cpos% = opts% + 1 THEN cpos% = 1
+cp$ = cps$(cpos% - 1)
+chpr% = 0
+CASE ELSE
+END SELECT
+inst% = inst% + 1
+IF inst% MOD 1000 = 0 THEN
+disp% = FIX(inst% / 1000)
+vpos% = 180 + (20 * cpos%)
+xcv% = optionx%(cpos% - 1)
+zxc% = os% + (cpos% - 1) * 20
+rub xcv% - 80, zxc% - 5, xcv% - 15, zxc% + 15
+PUT (xcv% - 30 - disp%, vpos%), curl%
+xcv% = xcv% + (LEN(option$(cpos% - 1)) * 15)
+rub xcv% + 15, zxc% - 5, xcv% + 80, zxc% + 15
+PUT (xcv% + 20 + disp%, vpos%), curr%
+END IF
+IF inst% > 30000 THEN inst% = 0
+IF chpr% < LEN(cp$) AND inst% MOD 5000 = 0 THEN
+chpr% = chpr% + 1
+chp$ = MID$(cp$, chpr%, 1)
+x1% = chpr% MOD bchp%
+y1% = FIX(chpr% / bchp%)
+x1% = bxas% + (x1% * 10)
+y1% = bxad% + (y1% * 15)
+char chp$, x1%, y1%, 2, 1, bt%
+END IF
+LOOP
+ERASE curr%, curl%
+mainmenu% = cpos%
+END FUNCTION
+
+FUNCTION menu$ (s$, x1%, y1%, x2%, y2%, t$, b$, f%, tt%, c%, bc%, ib%)
+'////////////////////Counting buttons
+FOR i% = 1 TO LEN(b$)
+IF MID$(b$, i%, 1) = "." THEN but = but + 1
+NEXT
+ebs = (x2% - x1% - 10 - (5 * but)) / but
+
+'///////////////////Reading buttons
+DIM button$(but)
+DIM xxx1(but)
+butt = 1
+FOR i% = 1 TO LEN(b$)
+zx$ = MID$(b$, i%, 1)
+IF zx$ = "." THEN
+button$(bu) = MID$(b$, butt, i% - butt)
+butt = i% + 1
+bu = bu + 1
+END IF
+NEXT
+
+'////////////////////Opening window
+word s$, x1%, y1%, 3, 2, c%, 10, 21000, 0
+ty1% = y1% + 25
+linez x1%, ty1%, x2%, ty1%, 4, (c% + 1) MOD 16
+sy1% = ty1% + 5
+sx2% = x1% + 2 * FIX(ABS(x2% - x1%) / 3)
+tc% = (c% + 2) MOD 16
+linez x1%, sy1%, sx2%, sy1%, 6, tc%
+dy1% = sy1% + 3
+FOR i% = dy1% TO y2%
+linez x1%, sy1%, x1%, i%, 2, tc%
+linez x2%, sy1%, x2%, i%, 2, tc%
+linez x1%, i%, x2%, i%, 2, tc%
+LINE (x1% + 1, i%)-(x2% - 1, i%), 0
+SOUND f% / ((i% MOD 2) + 1), tt%
+NEXT
+
+'////////////////////Writing text
+tc% = (tc% + 1) MOD 16
+cha = x1% + 5
+chb = dy1% + 1
+chpx = FIX((x2% - x1% - 8) / 10)
+chpy = FIX((y2% - y1% - 28) / 15)
+FOR i% = 1 TO LEN(t$)
+IF FIX(i / chpx) > chpy THEN GOTO smenu1
+ag$ = MID$(t$, i%, 1)
+cx1% = cha + (i% MOD chpx) * 10
+cy1% = chb + FIX(i% / chpx) * 15
+char ag$, cx1%, cy1%, 2, 1, tc%
+ff = f% / ((i% MOD 2) + 1)
+IF ff > f% THEN ff = f%
+SOUND ff, tt%
+NEXT
+
+'/////////////////////Creating inputbox
+IF ib% <> 0 THEN
+ibchs$ = ""
+cy1% = cy1% + 19
+cx1% = x1% + 5
+cy2% = y2% - 25
+cx2% = x2% - 5
+ibc% = (c% + 10) MOD 16
+linez cx1%, cy1%, cx2%, cy1%, 4, ibc%
+linez cx2%, cy1%, cx2%, cy2%, 4, ibc%
+linez cx2%, cy2%, cx1%, cy2%, 4, ibc%
+linez cx1%, cy2%, cx1%, cy1%, 4, ibc%
+ibc% = (ibc% + 1) MOD 16
+chx1% = cx1% + 3
+chy1% = cy1% + 3
+chpx% = FIX((cx2% - cx1% - 6) / 9)
+chpy% = FIX((cy2% - cy1% - 6) / 15)
+END IF
+
+'/////////////////////Creating buttons
+smenu1: tc% = (c% + 4) MOD 16
+uc% = (c% + 5) MOD 16
+vc% = (c% + 6) MOD 16
+inbx = x1% + 5
+by1% = y2% - 20
+by2% = y2% - 5
+FOR i% = 1 TO but
+bx1% = inbx
+xxx1(i% - 1) = bx1%
+bx2% = inbx + ebs
+LINE (bx1% + 1, by1%)-(bx2% - 1, by1%), tc%
+LINE (bx1%, by1% + 1)-(bx1%, by2% - 1), tc%
+linez bx2%, by1% + 1, bx2%, by2% - 1, 2, uc%
+linez bx1% + 1, by2%, bx2% - 1, by2%, 2, uc%
+tx1% = bx1% + 3
+ty1% = by1% + 3
+inbx = bx2% + 5
+word button$(i% - 1), tx1%, ty1%, 2, 1, vc%, 9, 21000, 0
+NEXT
+
+'////////////////////Asking user for input
+IF ib% <> 0 THEN
+ch% = 0
+k$ = ""
+DO UNTIL k$ = CHR$(27) OR k$ = CHR$(enter)
+k$ = INKEY$
+ 
+IF k$ = CHR$(backspc) THEN
+  ch% = ch% - 1
+  chx% = chx1% + (ch% MOD chpx%) * 9
+  chy% = chy1% + FIX(ch% / chpx%) * 15
+  rub chx%, chy%, chx% + 9, chy% + 12
+  ibchs$ = LEFT$(ibchs$, LEN(ibchs$) - 1)
+END IF
+
+
+IF k$ <> "" AND k$ <> CHR$(backspc) THEN
+  chx% = chx1% + (ch% MOD chpx%) * 9
+  chy% = chy1% + FIX(ch% / chpx%) * 15
+  IF FIX(ch% / chpx%) <= chpy% THEN
+  char UCASE$(k$), chx%, chy%, 1, 1, ibc%
+  ch% = ch% + 1
+  ibchs$ = ibchs$ + k$
+  END IF
+END IF
+LOOP
+IF k$ = CHR$(27) THEN
+GOSUB smenuc
+ee$ = "esc"
+GOTO smenue
+END IF
+END IF
+
+'//////////////////////////Asking user
+IF ibchs$ <> "" THEN ibchs$ = ibchs$ + ":"
+wc% = (c% + 7) MOD 16
+bpos = 1
+bx1% = xxx1(bpos - 1) + 1
+bx2% = bx1% + ebs - 2
+by1% = y2% - 19
+by2% = y2% - 6
+ty1% = y2% - 17
+pnt bx1%, by1%, bx2%, by2%, wc%
+tx1% = bx1% + 2
+word button$(bpos - 1), tx1%, ty1%, 2, 1, vc%, 9, 21000, 0
+
+inst = 0
+by1% = by1 + 1
+ty1% = by1 + 2
+by2% = by2 - 1
+DO
+k$ = INKEY$
+
+SELECT CASE k$
+CASE CHR$(0) + CHR$(right)
+GOSUB smenu2
+bpos = bpos + 1
+IF bpos > but THEN bpos = 1
+GOSUB smenu3
+CASE CHR$(0) + CHR$(left)
+GOSUB smenu2
+bpos = bpos - 1
+IF bpos < 1 THEN bpos = but
+GOSUB smenu3
+CASE CHR$(27)
+GOSUB smenuc
+ee$ = "esc"
+CASE CHR$(enter)
+SOUND 3000, 18
+GOSUB smenuc
+ee$ = ibchs$ + button$(bpos - 1)
+CASE ELSE
+END SELECT
+IF ee$ <> "" THEN GOTO smenue
+pl1% = FIX(inst / 1000)
+pl2% = FIX(pl1% / 2)
+pl3% = FIX(pl1% / 3)
+IF bc% = 1 THEN PALETTE wc%, 65536 * pl1% + 256 * pl2% + pl3%
+IF bc% = 2 THEN PALETTE wc%, 65536 * pl3% + 256 * pl1% + pl2%
+IF bc% = 3 THEN PALETTE wc%, 65536 * pl2% + 256 * pl3% + pl1%
+IF inst >= 62000 THEN inst = 0
+inst = inst + 1
+LOOP
+
+smenu2: bx1% = xxx1(bpos - 1) + 1
+bx2% = bx1% + ebs - 2
+by1% = y2% - 19
+by2% = y2% - 6
+ty1% = y2% - 17
+pnt bx1%, by1%, bx2%, by2%, 0
+tx1% = bx1% + 2
+word button$(bpos - 1), tx1%, ty1%, 2, 1, vc%, 9, 21000, 0
+RETURN
+smenu3: bx1% = xxx1(bpos - 1) + 1
+bx2% = bx1% + ebs - 2
+pnt bx1%, by1%, bx2%, by2%, wc%
+tx1% = bx1% + 2
+word button$(bpos - 1), tx1%, ty1%, 2, 1, vc%, 9, 21000, 0
+RETURN
+smenuc: tc% = (c% + 2) MOD 16
+xx1% = x1% - 5
+xx2% = x2% + 5
+yy2% = y2% + 2
+yy1% = y1% - 2
+FOR i% = yy2% TO yy1% STEP -1
+linez xx1%, i%, xx2%, i%, 3, tc%
+linez xx1%, i%, xx2%, i%, 2, 0
+ff = f% / ((i% MOD 2) + 2)
+IF ff > f% THEN ff = f%
+SOUND ff, tt%
+NEXT
+LINE (xx1%, yy1% - 1)-(xx2%, yy1% - 1), 0
+RETURN
+smenue: menu$ = ee$
+END FUNCTION
+
+SUB pnt (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER, c%)
+FOR i = x1 TO x2
+LINE (i, y1)-(i, y2), c%
+NEXT
+END SUB
+
+FUNCTION portin$ (l AS INTEGER, p AS LONG)
+ad$ = ""
+FOR i = 1 TO l
+ad$ = ad$ + CHR$(INP(p))
+NEXT
+portin$ = ad$
+END FUNCTION
+
+SUB portout (s AS STRING, p AS LONG)
+FOR i = 1 TO LEN(s$)
+OUT p, ASC(MID$(s$, i, 1))
+NEXT
+END SUB
+
+FUNCTION randnum (a1 AS INTEGER, a2 AS INTEGER)
+RANDOMIZE (11)
+a% = RND(3)
+b = RND(a%)
+c = b * 10000
+d = a2 - a1 + 1
+e% = a1 + (c MOD d)
+randnum = e%
+END FUNCTION
+
+SUB rub (x1 AS INTEGER, y1 AS INTEGER, x2 AS INTEGER, y2 AS INTEGER)
+FOR i% = x1 TO x2
+LINE (i%, y1)-(i%, y2), 0
+NEXT
+END SUB
+
+SUB win (h$, c%)
+linex 0, 0, 640, 0, 3, c%
+linex 0, 478, 640, 478, 3, c%
+linex 0, 440, 640, 440, 3, c%
+linex 40, 20, 540, 20, 3, c%
+linex 0, 70, 40, 70, 3, c%
+linex 0, 90, 40, 90, 3, c%
+linex 540, 420, 640, 420, 3, c%
+word "TEXT", 543, 425, 2, 1, 1, 9, 21000, 0
+linex 540, 380, 640, 380, 3, c%
+word "MENU", 543, 385, 2, 1, 2, 9, 21000, 0
+linex 540, 160, 640, 160, 3, c%
+linex 540, 140, 640, 140, 3, c%
+linex 540, 100, 640, 100, 3, c%
+linex 540, 50, 640, 50, 3, c%
+liney 1, 0, 1, 480, 3, c%
+liney 40, 0, 40, 480, 3, c%
+liney 250, 440, 250, 480, 3, c%
+liney 540, 0, 540, 480, 3, c%
+liney 639, 0, 639, 480, 3, c%
+word "FILE NAME - " + UCASE$(h$), 150, 3, 2, 1, 15, 9, 21000, 0
+END SUB
+
+SUB word (s AS STRING, x AS INTEGER, y AS INTEGER, t1 AS INTEGER, p1 AS INTEGER, c AS INTEGER, p AS INTEGER, f AS INTEGER, t AS DOUBLE)
+x1% = x
+FOR i% = 1 TO LEN(s$)
+a$ = MID$(s$, i%, 1)
+IF a$ <> " " THEN char a$, x1%, y, t1, p1, c
+x1% = x1% + p
+SOUND f, t
+NEXT
+END SUB
+

@@ -1,0 +1,517 @@
+DECLARE FUNCTION Ulong2int% (Ulong&)
+DECLARE FUNCTION DMADone% (DMA16%, L&)
+DECLARE SUB WavInfo (Length&, Freq&, StereoWav%, SixteenBit%)
+DECLARE SUB AckInterrupt (which%)
+DECLARE FUNCTION ActInterrupt% ()
+DECLARE FUNCTION ReadIRQ% ()
+DECLARE SUB SetIRQ (what%)
+DECLARE FUNCTION ReadDMA% ()
+DECLARE SUB WriteDMA (DMA8%, DMA16%)
+DECLARE FUNCTION ResetDSP% ()
+DECLARE FUNCTION ReadDSP% ()
+DECLARE SUB WriteDSP (what%)
+DECLARE SUB WriteMixer (which%, what%)
+DECLARE FUNCTION ReadMixer% (which%)
+DECLARE SUB ResetMixer ()
+DECLARE FUNCTION DSPVersion! ()
+DECLARE SUB VoiceVol (Left%, Right%)
+DECLARE SUB MicVol (LR%)
+DECLARE SUB MasterVol (Left%, Right%)
+DECLARE SUB MIDIVol (Left%, Right%)
+DECLARE SUB CDVol (Left%, Right%)
+DECLARE SUB LineVol (Left%, Right%)
+DECLARE SUB DSPPause (what%)
+DECLARE SUB DMAsend (Segment&, Offset&, Length&, Freq&, StereoWav%)
+DECLARE FUNCTION int2ULong& (integers%)
+
+
+Filename$ = "council.wav"
+
+CLS
+DIM SHARED Baseport%, DMA%, PgPort%, AddPort%, LenPort%, ModeReg%
+
+Baseport% = &H220
+DMA% = 1
+
+PRINT ENVIRON$("BLASTER")
+'DMAsend &HA00, &H0, 65535, 11025, 0
+TYPE WaveHeaderType
+        RiffID           AS STRING * 4 'should be 'RIFF'
+        RiffLength       AS LONG
+        WavID            AS STRING * 4 'should be 'WAVE'
+        FmtID            AS STRING * 4
+        FmtLength        AS LONG
+        wavformattag     AS INTEGER ' word - format category e.g. 0x0001=PCM
+        Channels         AS INTEGER ' word - number of Channels 1=mono 2=stereo
+        SamplesPerSec    AS LONG    'dword - sampling rate e.g. 44100Hz
+        avgBytesPerSec   AS LONG    'dword - to estimate buffer size
+        blockalign       AS INTEGER ' word - buffer size must be int. multiple of this
+        FmtSpecific      AS INTEGER ' word
+        DataID           AS STRING * 4
+        DataLength       AS LONG
+END TYPE
+
+DIM SHARED Wave(0) AS WaveHeaderType
+
+IF ResetDSP% THEN PRINT "DSP reset sucessfully!" ELSE PRINT "DSP failed to reset, try another port.": END
+PRINT "Sound Card DSP version:"; DSPVersion!
+cardversion% = FIX(DSPVersion!)
+WriteDSP &HD1   'turn the speaker on
+MasterVol 15, 15  '15,15,0 cranks the master volume all the way up.
+PRINT "Master volume is set at: Right-"; 8; " Left-"; 8
+
+CONST blocklen = 32764
+DIM WavBuffer(1) AS STRING * blocklen
+OPEN "B", #1, Filename$
+HeaderSize = 45                'assume .WAV file (use 45)
+                               'I think it's 32 for VOC, 0 for RAW files
+PRINT : PRINT "Playing " + Filename$
+GET #1, 1, Wave(0): 'BASIC defines beginning of file as 1
+Freq& = 22000: 'default playback frequency
+'Length& = LOF(1) - HeaderSize
+
+WavInfo Length&, Freq&, StereoWav%, SixteenBit%
+css = cardversion% = 3 AND SixteenBit% AND StereoWav% 'conversion active?
+cmm = cardversion% = 3 AND SixteenBit% AND NOT StereoWav% '16mono->8mono
+LOCATE 1, 64: PRINT "cycles free"
+SEEK #1, HeaderSize
+Bseg& = int2ULong&(VARSEG(WavBuffer(0)))
+Boff& = int2ULong&(VARPTR(WavBuffer(0))): 'should always be 0 in BASIC
+RLength& = Length&: 'RLength& is number of remaining bytes
+        IF RLength& >= blocklen THEN
+                L& = blocklen
+        ELSE
+                L& = RLength&
+        END IF
+        GET #1, , WavBuffer(0) 'fill first buffer
+t1# = TIMER
+DO
+        '............play block in the background.......................
+                    DMAsend Bseg&, Boff&, L&, Freq&, StereoWav%
+                
+                LOCATE 1, 14: COLOR 14: PRINT "SB mode"; Freq&; "Hz"
+        
+        IF RLength& <= 0 THEN GOTO last
+        '..............................................................
+        'fill alternate buffer
+                IF RLength& >= blocklen THEN
+                        L& = blocklen
+                ELSE
+                        L& = RLength&
+                END IF
+                
+                    GET #1, , WavBuffer(0)
+                    'IF css THEN ConvertStereo Freq&, Bseg&, Boff&, L&
+                    'IF cmm THEN Convert4 Bseg&, Boff&, L&
+                RLength& = RLength& - L& 'update remaining length
+
+        'done filling alternate buffer,,,,,,,,,,,,,,
+last:
+        LOCATE 1, 37: PRINT TIME$; "  "; 100 - INT(RLength& / Length& * 100); "% done  "; cycles%
+        cycles% = 0
+        IF INKEY$ > "" THEN stopflag = 1
+        DO UNTIL DMADone%(DMA16%, L&)
+              
+               'now CPU is free to do graphics, etc.
+               'LINE (RND * 640, RND * 350)-(RND * 640, RND * 350), RND * 16
+               '
+               '
+               ' put your graphics update calls here
+               '
+               '
+                IF cycles% < 32767 THEN cycles% = cycles% + 1
+                'LOCATE 23, 1
+                'PRINT USING "###.##s"; (TIMER - t1#)
+                IF INKEY$ > "" THEN stopflag = 1
+        LOOP
+        IF stopflag THEN EXIT DO: 'stop here so it doesn't freeze the computer
+LOOP UNTIL EOF(1)
+
+'Use DMARecord to record in the background.
+'and use DMAPlay to playback the same buffer you recorded to or you could
+'even write the buffer to a file.
+'DMARecord VARSEG(WavBuffer(0)), VARPTR(WavBuffer(0)), Length&, Freq&
+
+LOCATE 23, 1: PRINT "DMA transfer completed!";
+WriteDSP &HD0
+WriteDSP &HD3
+'DMAState 0: 'stop sound
+'SpeakerState 0: 'turn the speaker off
+MasterVol 0, 0 'mute (clicks)
+quit% = ResetDSP%
+CLOSE
+END
+
+
+
+
+
+
+
+
+a1% = -1
+a2% = -1
+VoiceVol a1%, a2%
+PRINT "Voice Vol:"; a1%; a2%
+
+SUB AckInterrupt (which%)
+SELECT CASE which%
+CASE 1
+a% = INP(Baseport% + &HE)
+CASE 2
+a% = INP(Baseport% + &HF)
+CASE 3
+a% = INP(Baseport% + &HE)
+CASE 4
+a% = INP(Baseport% + &H100)
+CASE ELSE
+END SELECT
+END SUB
+
+FUNCTION ActInterrupt%
+OUT Baseport% + &H4, &H82
+ActInterrupt% = INP(Baseport% + &H5) AND &H7
+END FUNCTION
+
+SUB CDVol (Left%, Right%)
+OUT Baseport% + &H4, &H28
+IF (Left% < 0 OR Right% < 0) THEN
+        a% = INP(Baseport% + &H5)
+        Left% = a% \ &H10
+        Right% = a% AND &HF
+ELSE
+        a% = Left% * &H10 + Right%
+        OUT Baseport% + &H5, a%
+END IF
+END SUB
+
+FUNCTION DMADone% (DMA16%, L&)
+countlo% = INP(LenPort%)
+counthi% = INP(LenPort%)
+count& = CLNG(counthi% * 256&) + CLNG(countlo%)
+'if you have problems with L&-8, then use L&-1
+'LOCATE 21, 1
+'PRINT counthi%; "   "
+IF count& > L& - 1 THEN
+        IF DMA16% THEN
+                ack16% = INP(Baseport% + &HF) 'ack to SB
+                'OUT &HA0, &H20 'acknowledge SB interrupt 8-15
+                'OUT &H20, &H20 'acknowledge SB interrupt 1-15
+        ELSE
+                ack% = INP(Baseport% + &HE)
+                'OUT &H20, &H20 'acknowledge SB interrupt 1-15
+        END IF
+        DMADone% = -1
+        'SOUND 300, .4
+END IF
+END FUNCTION
+
+SUB DMAsend (Segment&, Offset&, Length&, Freq&, StereoWav%)
+' Transfers and plays the contents of the buffer.
+Length& = Length& - 1
+page% = 0
+addr& = Segment& * 16 + Offset&
+SELECT CASE DMA%
+    CASE 0
+       PgPort% = &H87
+       AddPort% = &H0
+       LenPort% = &H1
+       ModeReg% = &H48
+    CASE 1
+       PgPort% = &H83
+       AddPort% = &H2
+       LenPort% = &H3
+       ModeReg% = &H49
+    CASE 2
+       PgPort% = &H81
+       AddPort% = &H4
+       LenPort% = &H5
+       ModeReg% = &H4A
+    CASE 3
+       PgPort% = &H82
+       AddPort% = &H6
+       LenPort% = &H7
+       ModeReg% = &H4B
+    CASE ELSE
+       PRINT "8-bit DMA channels 0-3 only!": END
+       EXIT SUB
+END SELECT
+Lengthlo% = Length& AND &HFF
+Lengthhi% = Length& \ &H100
+'IF StereoWav% THEN SetStereo 1
+OUT &HA, &H4 + DMA%: 'DMA channel to use (DRQ#)
+OUT &HC, &H0
+OUT &HB, ModeReg%
+OUT AddPort%, addr& AND &HFF:  'buffer address of sound data low byte
+OUT AddPort%, (addr& AND &HFF00&) \ &H100: 'high byte
+IF (addr& AND 65536) THEN page% = page% + 1: '64K pages for 8-bit DMA
+IF (addr& AND 131072) THEN page% = page% + 2
+IF (addr& AND 262144) THEN page% = page% + 4
+IF (addr& AND 524288) THEN page% = page% + 8
+OUT PgPort%, page%: 'output page of phys. addr of sample block
+OUT LenPort%, Lengthlo%: 'size of block to DMA controller -Low
+OUT LenPort%, Lengthhi%: 'high byte
+OUT &HA, DMA%: 'release DMA channel
+
+'LOCATE 21, 1: PRINT "seg:"; DEC2HEX$(Segment&),
+'PRINT "offset:"; DEC2HEX$(Offset&), "addr:"; DEC2HEX$(addr&)
+
+
+TimeConst% = 256 - 1000000 \ Freq&
+
+IF Freq& < 22728 THEN
+   'IF Freq& > 22222 AND cardversion% = 1 THEN PRINT "SB 1.x: 4000-22222Hz only"
+   'IF Freq& < 4000 THEN PRINT "SB: 4000+Hz only"
+   WriteDSP &H40
+   WriteDSP TimeConst%
+   WriteDSP &H14:                      '8 bit output over DMA
+   WriteDSP (Length& AND &HFF)
+   WriteDSP ((Length& AND &HFFFF&) \ &H100)
+ELSE 'SBPro (DSP version 3.x) can play 8-bit mono/stereo wave files
+   IF cardversion% = 3 THEN
+      'high speed 8 bit output up to 44kHz mono or 22Khz stereo
+      WriteDSP &H40:  'output sampling rate const
+      WriteDSP TimeConst%
+      WriteDSP &H48
+      WriteDSP Lengthlo%
+      WriteDSP Lengthhi%
+      WriteDSP &H91
+   ELSE
+      PRINT "You need a Sound Blaster Pro to play at 8 bit high speed."
+      EXIT SUB
+   END IF
+END IF
+END SUB
+
+SUB DSPPause (what%)
+IF (what% = 1) THEN WriteDSP &HD0 ELSE WriteDSP &HD4
+END SUB
+
+FUNCTION DSPVersion!
+WriteDSP &HE1
+a! = ReadDSP% + .01 * ReadDSP%
+DSPVersion! = a!
+END FUNCTION
+
+FUNCTION int2ULong& (signedint%)
+IF signedint% < 0 THEN
+        int2ULong& = CLNG(signedint% + 65536)
+ELSE
+        int2ULong& = CLNG(signedint%)
+END IF
+END FUNCTION
+
+SUB LineVol (Left%, Right%)
+OUT Baseport% + &H4, &H2E
+IF (Left% < 0 OR Right% < 0) THEN
+        a% = INP(Baseport% + &H5)
+        Left% = a% \ &H10
+        Right% = a% AND &HF
+ELSE
+        a% = Left% * &H10 + Right%
+        OUT Baseport% + &H5, a%
+END IF
+END SUB
+
+SUB MasterVol (Left%, Right%)
+OUT Baseport% + &H4, &H22
+IF (Left% < 0 OR Right% < 0) THEN
+        a% = INP(Baseport% + &H5)
+        Left% = a% \ &H10
+        Right% = a% AND &HF
+ELSE
+        a% = Left% * &H10 + Right%
+        OUT Baseport% + &H5, a%
+END IF
+END SUB
+
+SUB MicVol (LR%)
+OUT Baseport% + &H4, &H26
+IF (LR% < 0) THEN
+        LR% = INP(Baseport% + &H5) AND &H7
+ELSE
+        OUT Baseport% + &H5, LR%
+END IF
+END SUB
+
+SUB MIDIVol (Left%, Right%)
+OUT Baseport% + &H4, &H26
+IF (Left% < 0 OR Right% < 0) THEN
+        a% = INP(Baseport% + &H5)
+        Left% = a% \ &H10
+        Right% = a% AND &HF
+ELSE
+        a% = Left% * &H10 + Right%
+        OUT Baseport% + &H5, a%
+END IF
+END SUB
+
+FUNCTION ReadDMA%
+OUT Baseport% + &H4, &H81
+a% = INP(Baseport% + &H5)
+a1% = a% AND &HF
+a2% = a% AND &HF0
+SELECT CASE a1%
+CASE 1
+a% = 0
+CASE 2
+a% = 1
+CASE 8
+a% = 3
+CASE ELSE
+a% = 0
+END SELECT
+SELECT CASE a2%
+CASE &H20
+a% = a% + 50
+CASE &H40
+a% = a% + 60
+CASE &H80
+a% = a% + 70
+CASE ELSE
+END SELECT
+ReadDMA% = a%
+END FUNCTION
+
+FUNCTION ReadDSP%
+DO
+LOOP UNTIL (INP(Baseport% + &HE) AND &H80)
+ReadDSP% = INP(Baseport% + &HA)
+END FUNCTION
+
+FUNCTION ReadIRQ%
+OUT Baseport% + &H4, &H80
+a% = INP(Baseport% + &H5) AND &HF
+SELECT CASE a%
+CASE 1
+a% = 2
+CASE 2
+a% = 5
+CASE 4
+a% = 7
+CASE 8
+a% = 10
+CASE ELSE
+a% = -1
+END SELECT
+ReadIRQ% = a%
+END FUNCTION
+
+FUNCTION ReadMixer% (which%)
+OUT Baseport% + &H4, which%
+ReadMixer% = INP(Baseport% + &H5)
+END FUNCTION
+
+FUNCTION ResetDSP%
+OUT Baseport% + &H6, 1
+OUT Baseport% + &H6, 0
+DO
+a% = a% + 1
+LOOP UNTIL (INP(Baseport% + &HE) AND &H80) OR a% = 100
+IF (INP(Baseport% + &HA) = &HAA) THEN a% = 0 ELSE a% = 1
+ResetDSP% = a% - 1
+END FUNCTION
+
+SUB ResetMixer
+OUT Baseport% + &H4, 0
+OUT Baseport% + &H5, 0
+END SUB
+
+SUB SetIRQ (what%)
+SELECT CASE what%
+CASE 2
+a% = 1
+CASE 5
+a% = 2
+CASE 7
+a% = 4
+CASE 10
+a% = 8
+CASE ELSE
+EXIT SUB
+END SELECT
+OUT Baseport% + &H4, &H80
+OUT Baseport% + &H5, a%
+END SUB
+
+FUNCTION Ulong2int% (Ulong&)
+IF Ulong& > 32767 THEN
+        Sint% = CINT(Ulong& - 65536)
+ELSE
+        Sint% = CINT(Ulong&)
+END IF
+Ulong2int% = Sint%
+END FUNCTION
+
+SUB VoiceVol (Left%, Right%)
+OUT Baseport% + &H4, &H4
+IF (Left% < 0 OR Right% < 0) THEN
+        a% = INP(Baseport% + &H5)
+        Left% = a% \ &H10
+        Right% = a% AND &HF
+ELSE
+        a% = Left% * &H10 + Right%
+        OUT Baseport% + &H5, a%
+END IF
+END SUB
+
+SUB WavInfo (Length&, Freq&, StereoWav%, SixteenBit%)
+'PRE: Wave(0) array filled from WAV file header
+'blocklen passed because it is a constant
+'POST: Length&, Freq& set
+IF UCASE$(Wave(0).RiffID) <> "RIFF" THEN PRINT "NOT A RIFF FILE": END
+PRINT "RiffLength:"; Wave(0).RiffLength
+IF UCASE$(Wave(0).WavID) <> "WAVE" THEN PRINT "NOT A WAVE FILE": END
+IF Wave(0).wavformattag <> 1 THEN PRINT "Not PCM format": END
+PRINT "Channels:"; Wave(0).Channels;
+Freq& = Wave(0).SamplesPerSec
+SELECT CASE Wave(0).Channels
+    CASE 2
+        StereoWav% = 1: PRINT "(Stereo)"
+    CASE 1
+        StereoWav% = 0: PRINT "(mono)"
+    CASE ELSE
+        StereoWav% = -1: END
+END SELECT
+
+PRINT "SamplesPerSec:"; Freq&
+'assume no weird sampling rate like 9bit/sec
+'PRINT "should equal blockalign:"; (Wave(0).avgBytesPerSec / Freq&)
+PRINT "BlockAlign:"; Wave(0).blockalign
+IF (blocklen MOD Wave(0).blockalign) <> 0 THEN PRINT "Internal error: make blocklen=32752": END
+PRINT "FmtSpecific:"; Wave(0).FmtSpecific; "bits/sample"
+IF Wave(0).FmtSpecific = 16 THEN SixteenBit% = 1
+PRINT "DataID:"; Wave(0).DataID
+IF UCASE$(Wave(0).DataID) <> "DATA" THEN PRINT "Not Data chunk": END
+PRINT "DataLength:"; Wave(0).DataLength; "bytes"
+Length& = Wave(0).DataLength
+playtime# = Length& / Freq& / Wave(0).blockalign
+pmin = INT(playtime#) \ 60
+psec = INT(playtime#) MOD 60
+IF pmin > 0 THEN
+    PRINT USING "Play Length: ##:"; pmin;
+    PRINT USING "##"; psec
+ELSE
+    PRINT USING "Play Length ##.##s"; playtime#
+END IF
+PRINT "start of actual data:"; SEEK(1)
+END SUB
+
+SUB WriteDMA (DMA8%, DMA16%)
+IF (DMA8% > 0) THEN a% = 2 ^ DMA8%
+IF (DMA16% >= 4) THEN a% = a% + 2 ^ (DMA16% - 4)
+OUT Baseport% + &H4, &H81
+OUT Baseport% + &H5, a%
+END SUB
+
+SUB WriteDSP (what%)
+DO
+LOOP WHILE INP(Baseport% + &HC) AND &H80
+OUT Baseport% + &HC, what%
+END SUB
+
+SUB WriteMixer (which%, what%)
+OUT Baseport% + &H4, which%
+OUT Baseport% + &H5, what%
+END SUB
+

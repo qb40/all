@@ -1,0 +1,299 @@
+DECLARE SUB music (f AS STRING)
+DECLARE SUB eraseprev ()
+DECLARE SUB scan1 (f AS STRING, t AS DOUBLE)
+DECLARE SUB scan2 (f AS STRING, f1 AS INTEGER, f2 AS INTEGER, t AS DOUBLE)
+DECLARE FUNCTION frelimit (a AS INTEGER)
+DECLARE FUNCTION makeupi (a AS INTEGER)
+DECLARE FUNCTION makeupc (a AS INTEGER)
+DECLARE FUNCTION makeups (a AS INTEGER)
+DECLARE FUNCTION makeupy (a AS INTEGER)
+DECLARE FUNCTION makeupx (a AS INTEGER)
+DECLARE SUB controls ()
+DECLARE SUB save (f AS STRING)
+DECLARE SUB load (f AS STRING)
+
+
+ON ERROR GOTO errs
+CLS
+play$ = "n"
+f$ = COMMAND$
+IF f$ <> "" THEN GOTO do2
+COLOR 12
+main: CLS
+PRINT SPC(20); "Visual music player"
+COLOR 13
+PRINT SPC(20); "-------------------"
+PRINT ""
+PRINT ""
+PRINT SPC(50); "-by Subhajit Sahu"
+PRINT ""
+PRINT "1 - Create a visual music file"
+PRINT "2 - Load a visual music file"
+PRINT ""
+PRINT "Option(1/2)-->"
+in1: a$ = INPUT$(1)
+IF a$ = "1" THEN GOTO crea
+IF a$ = "2" THEN GOTO loa
+IF a$ = CHR$(27) THEN SYSTEM
+GOTO in1
+crea: CLS
+COLOR 2
+INPUT "File name"; f$
+INPUT "Lower Frequency limit"; fr1%
+INPUT "Upper Frequency limit"; fr2%
+fr1% = frelimit(FIX(fr1%))
+fr2% = frelimit(FIX(fr2%))
+IF fr1% > fr2% THEN SWAP fr1%, fr2%
+INPUT "Time limit"; t
+t = FIX(t)
+tz# = t / 641
+
+controls
+i3: clr = 0
+s = 0
+i = 1
+x = 0
+y = 480
+SCREEN 12
+i1: CIRCLE (x, y), s, c
+i2: k$ = LCASE$(INPUT$(1))
+IF k$ = "8" THEN y = makeupy(y - i)
+IF k$ = "2" THEN y = makeupy(y + i)
+IF k$ = "4" THEN x = makeupx(x - i)
+IF k$ = "6" THEN x = makeupx(x + i)
+IF k$ = "5" THEN GOTO rub
+IF k$ = "[" THEN s = makeups(s + 1)
+IF k$ = "]" THEN s = makeups(s - 1)
+IF k$ = "," THEN c = makeupc(c + 1)
+IF k$ = "." THEN c = makeupc(c - 1)
+IF k$ = "/" THEN i = makeupi(i + 1)
+IF k$ = "*" THEN i = makeupi(i - 1)
+IF k$ = CHR$(27) THEN GOTO main
+IF k$ = "q" THEN GOSUB sv
+IF k$ = "w" THEN GOSUB pl
+GOTO i1
+rub: CIRCLE (x, y), s, 0
+GOTO i2
+
+sv: save f$
+scan1 f$, tz#
+scan2 f$, fr1%, fr2%, tz#
+play$ = "y"
+RETURN
+pl: IF play$ <> "y" THEN GOTO ple
+PRINT "Now Playing . . ."
+music f$
+CLS
+load f$
+ple: RETURN
+
+
+loa: CLS
+INPUT "File name"; f$
+INPUT "Lower Frequency limit"; fr1%
+INPUT "Upper Frequency limit"; fr2%
+INPUT "Time limit"; t
+do3: fr1% = frelimit(FIX(fr1%))
+fr2% = frelimit(FIX(fr2%))
+IF fr1% > fr2% THEN SWAP fr1%, fr2%
+t = FIX(t)
+tz# = t / 641
+CLS
+controls
+CLS
+SCREEN 12
+load f$
+GOTO i3
+do2: cc = 1
+FOR i = 1 TO LEN(f$)
+zz$ = MID$(f$, i, 1)
+IF zz$ = " " AND cc = 1 THEN f1$ = zz2$
+IF zz$ = " " AND cc = 1 THEN cc = cc + 1
+IF zz$ = " " AND cc = 2 THEN f2 = VAL(zz2$)
+IF zz$ = " " AND cc = 2 THEN cc = cc + 1
+IF zz$ = " " AND cc = 3 THEN f3 = VAL(zz2$)
+IF zz$ = " " AND cc = 3 THEN cc = cc + 1
+zz2$ = zz2$ + zz$
+IF zz$ = " " THEN zz2$ = ""
+NEXT
+f4 = VAL(zz2$)
+f$ = f1$
+fr1% = f2
+fr2% = f3
+t = f4
+GOTO do3
+
+errs: RESUME NEXT
+
+
+
+SUB controls
+CLS
+COLOR 8
+PRINT "Controls"
+PRINT "--------"
+COLOR 7
+PRINT "8 - Move up"
+PRINT "2 - Move down"
+PRINT "4 - Move left"
+PRINT "6 - Move right"
+PRINT "5 - Erase"
+PRINT "[ - Increase pointer size"
+PRINT "] - Decrease pointer size"
+PRINT ", - Change colour(up)"
+PRINT ". - Change colour(down)"
+PRINT "/ - Increase movement speed"
+PRINT "* - Decrease movement speed"
+PRINT "Q - Save and scan"
+PRINT "W - Play"
+PRINT "Esc - Exit without saving"
+PRINT ""
+PRINT ""
+COLOR 12
+PRINT "Press any key to continue"
+k$ = INPUT$(1)
+END SUB
+
+SUB eraseprev
+FOR j = 0 TO 640
+FOR i = 0 TO 480
+IF POINT(j, i) = 15 THEN LINE (j, i)-(j, i), 0
+NEXT
+NEXT
+END SUB
+
+FUNCTION frelimit (a AS INTEGER)
+IF a < 40 THEN a = 40
+IF a > 20000 THEN a = 20000
+frelimit = a
+END FUNCTION
+
+SUB load (f AS STRING)
+OPEN "I", #1, f$
+IF ERR = 0 THEN GOTO c
+ans$ = "n"
+GOTO ee
+c: IF EOF(1) THEN GOTO c1
+INPUT #1, x, y, c
+IF ERR = 0 THEN GOTO c2
+ans$ = "n"
+GOTO ee
+c2: LINE (x, y)-(x, y), c
+GOTO c
+c1: CLOSE #1
+ans$ = "y"
+ee:
+END SUB
+
+FUNCTION makeupc (a AS INTEGER)
+IF a < 0 THEN a = 0
+IF a > 14 THEN a = 14
+makeupc = a
+END FUNCTION
+
+FUNCTION makeupi (a AS INTEGER)
+IF a < 1 THEN a = 1
+IF a > 50 THEN a = 50
+makeupi = a
+END FUNCTION
+
+FUNCTION makeups (a AS INTEGER)
+IF a < 0 THEN a = 0
+IF a > 10 THEN a = 10
+makeups = a
+END FUNCTION
+
+FUNCTION makeupx (a AS INTEGER)
+IF a < 0 THEN a = 0
+IF a > 640 THEN a = 640
+makeupx = a
+END FUNCTION
+
+FUNCTION makeupy (a AS INTEGER)
+IF a < 0 THEN a = 0
+IF a > 480 THEN a = 480
+makeupy = a
+END FUNCTION
+
+SUB music (f AS STRING)
+f1$ = f$ + ".sc2"
+OPEN "I", #1, f1$
+IF ERR = 0 THEN GOTO mue2
+CLS
+PRINT "File not found."
+GOTO mue
+mue2: IF EOF(1) THEN GOTO mue1
+INPUT #1, z1, z2
+SOUND z1, z2
+GOTO mue2
+mue1: CLOSE #1
+mue:
+END SUB
+
+SUB save (f AS STRING)
+OPEN "O", #1, f$
+FOR i = 0 TO 640
+FOR j = 0 TO 480
+a = POINT(i, j)
+IF a = 0 THEN GOTO no
+WRITE #1, i, j, a
+no: NEXT
+NEXT
+CLOSE #1
+END SUB
+
+SUB scan1 (f AS STRING, t AS DOUBLE)
+DEFINT I
+f1$ = f$ + ".sc1"
+OPEN "O", #1, f1$
+FOR i = 0 TO 640
+ctr = 0
+FOR j = 0 TO 480
+z = POINT(i, j)
+IF z = 0 THEN LINE (i, j)-(i, j), 15 ELSE ctr = ctr + 1
+NEXT
+IF ctr = 0 THEN GOTO no1
+zz = t / ctr
+WRITE #1, i, zz
+no2: NEXT
+eraseprev
+CLOSE #1
+GOTO e
+no1: WRITE #1, i, 0
+GOTO no2
+e:
+END SUB
+
+DEFSNG I
+SUB scan2 (f AS STRING, f1 AS INTEGER, f2 AS INTEGER, t AS DOUBLE)
+DEFINT Z
+fran = f2 - f1
+frea = fran / 481
+f3$ = f$ + ".sc2"
+OPEN "O", #2, f3$
+f4$ = f$ + ".sc1"
+OPEN "I", #1, f4$
+scf2: IF EOF(1) THEN GOTO scf1
+INPUT #1, z1, aa2
+IF aa2 <> 0 THEN GOTO scco
+WRITE #2, 21000, t
+FOR j2 = 0 TO 480
+z = POINT(z1, j2)
+IF z = 0 THEN LINE (z1, j2)-(z1, j2), 15
+NEXT
+GOTO scf2
+scco: FOR j = 0 TO 480
+z = POINT(z1, j)
+zzz = j
+IF z = 0 THEN LINE (z1, j)-(z1, j), 15 ELSE GOSUB scdo
+NEXT
+GOTO scf2
+scdo: freq = f1 + (frea * ((zzz - 480) + 1))
+freq = FIX(freq)
+IF freq < f1 THEN freq = freq + f1
+WRITE #2, freq, aa2
+RETURN
+scf1: CLOSE #1, #2
+eraseprev
+END SUB
+

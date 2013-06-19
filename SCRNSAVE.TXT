@@ -1,0 +1,47 @@
+DECLARE SUB move ()
+
+OPTION BASE 1
+CONST maxparticles = 1000
+
+DIM particles(1000, 5)'x,y,z,clr,active/inactive
+DIM centre(3), originate(3)
+yslope = 0
+zslope = 0
+speed = 1
+deviate = 10
+
+SCREEN 12
+
+FOR i& = 1 TO 1000000
+particles(INT(i& / 1000) + 1, 5) = 1
+particles(INT(i& / 1000) + 1, 4) = i& MOD 16
+'RANDOMIZE TIMER
+yslope = yslope + RND(1) * .001
+zslope = zslope + RND(2) * .001
+move
+SOUND 21000, .5
+NEXT
+
+SUB move
+SHARED particles(), yslope, zslope
+SHARED centre(), originate()
+SHARED speed, deviate
+
+
+FOR i% = 1 TO maxparticles
+'erase particles
+LINE (particles(i%, 1) - particles(i%, 3), particles(i%, 2) - particles(i%, 3))-(particles(i%, 1) + particles(i%, 3), particles(i%, 2) + particles(i%, 3)), 0, BF
+'move particles
+IF (particles(i%, 5) <> 0) THEN
+        particles(i%, 1) = particles(i%, 1) + speed
+        particles(i%, 3) = zslope * particles(i%, 1)
+        IF (particles(i%, 2) < centre(2)) THEN
+        particles(i%, 2) = (yslope * particles(i%, 1)) - ((centre(3) - particles(i%, 3)) * deviate)
+        
+END IF
+'draw particles
+LINE (particles(i%, 1) - particles(i%, 3), particles(i%, 2) - particles(i%, 3))-(particles(i%, 1) + particles(i%, 3), particles(i%, 2) + particles(i%, 3)), particles(i%, 4), BF
+NEXT
+
+END SUB
+

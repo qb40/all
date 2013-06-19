@@ -1,0 +1,190 @@
+DECLARE FUNCTION crc (a AS INTEGER)
+'0-15 'same
+'16-31 'shades black to white(16)
+'32-55 'shades of brg..b
+'56-79 'shades of light
+'80-103'shades of light
+'104-127'shades of dark
+'128-151'shades of dark
+'152-175'shades of dark        ,d,d,d
+
+'24
+DEFLNG P
+
+DIM clr(255, 3) AS INTEGER
+
+clr(0, 1) = 0
+clr(0, 2) = 0
+clr(0, 3) = 0
+clr(1, 1) = 0
+clr(1, 2) = 0
+clr(1, 3) = 127
+clr(2, 1) = 0
+clr(2, 2) = 127
+clr(2, 3) = 0
+clr(3, 1) = 0
+clr(3, 2) = 127
+clr(3, 3) = 127
+clr(4, 1) = 127
+clr(4, 2) = 0
+clr(4, 3) = 0
+clr(5, 1) = 127
+clr(5, 2) = 0
+clr(5, 3) = 127
+clr(6, 1) = 127
+clr(6, 2) = 127
+clr(6, 3) = 0
+clr(7, 1) = 127
+clr(7, 2) = 127
+clr(7, 3) = 127
+FOR i = 0 TO 7
+FOR j = 1 TO 3
+clr(i + 8, j) = clr(i, j) + 128
+NEXT
+NEXT
+clr(8, 1) = 64
+clr(8, 2) = 64
+clr(8, 3) = 64
+FOR i = 16 TO 31   'black to white
+FOR j = 1 TO 3
+clr(i, j) = 10 + (15 * (i - 16))
+NEXT
+NEXT
+FOR i = 32 TO 35   ' b - m
+clr(i, 1) = (i - 32) * 20
+clr(i, 2) = 0
+clr(i, 3) = 160
+NEXT
+FOR i = 36 TO 39   'm - r
+clr(i, 1) = 160
+clr(i, 2) = 0
+clr(i, 3) = (39 - i) * 20
+NEXT
+FOR i = 40 TO 43  'r - y
+clr(i, 1) = 160
+clr(i, 2) = (i - 40) * 20
+clr(i, 3) = 0
+NEXT
+FOR i = 44 TO 47  'y - g
+clr(i, 1) = (47 - i) * 20
+clr(i, 2) = 160
+clr(i, 3) = 0
+NEXT
+FOR i = 48 TO 51  'g - c
+clr(i, 1) = 0
+clr(i, 2) = 160
+clr(i, 3) = (i - 48) * 20
+NEXT
+FOR i = 52 TO 55   'c - b
+clr(i, 1) = 0
+clr(i, 2) = (55 - i) * 20
+clr(i, 3) = 160
+NEXT
+'b shades
+FOR i = 56 TO 79
+FOR j = 1 TO 3
+clr(i, j) = clr(i - 24, j) + 40
+NEXT
+NEXT
+FOR i = 80 TO 103
+FOR j = 1 TO 3
+clr(i, j) = clr(i - 48, j) + 80
+NEXT
+NEXT
+
+'d shades
+FOR i = 104 TO 127
+FOR j = 1 TO 3
+clr(i, j) = INT(clr(i - 72, j) * .5)
+NEXT
+NEXT
+FOR i = 128 TO 151
+FOR j = 1 TO 3
+clr(i, j) = INT(clr(i - 72, j) * .5)
+NEXT
+NEXT
+FOR i = 152 TO 175
+FOR j = 1 TO 3
+clr(i, j) = INT(clr(i - 72, j) * .5)
+NEXT
+NEXT
+
+'dd shades
+FOR i = 176 TO 199
+FOR j = 1 TO 3
+clr(i, j) = INT(clr(i - 72, j) * .5)
+NEXT
+NEXT
+FOR i = 200 TO 223
+FOR j = 1 TO 3
+clr(i, j) = INT(clr(i - 72, j) * .5)
+NEXT
+NEXT
+FOR i = 224 TO 247
+FOR j = 1 TO 3
+clr(i, j) = INT(clr(i - 72, j) * .5)
+NEXT
+NEXT
+
+
+
+
+'main program
+null$ = CHR$(0)
+CLS
+INPUT "Bitamp file"; ff$
+INPUT "X-resolution"; xx
+INPUT "Y-resolution"; yy
+INPUT "Position start(69 for 48*48)"; p
+
+CLS
+SCREEN 13
+
+x = 0
+y = 0
+ps = p
+
+OPEN "B", #1, ff$
+en = LOF(1)
+
+cnt: SEEK #1, ps
+r = ASC(INPUT$(1, #1) + null$)
+ps = ps + 1
+
+SEEK #1, ps
+g = ASC(INPUT$(1, #1) + null$)
+ps = ps + 1
+
+SEEK #1, ps
+b = ASC(INPUT$(1, #1) + null$)
+ps = ps + 1
+
+min = 1000
+cl = 0
+FOR i = 0 TO 255
+diff = ABS(r - clr(i, 1)) + ABS(g - clr(i, 2)) + ABS(b - clr(i, 3))
+IF (diff < min) THEN
+min = diff
+cl = i
+END IF
+NEXT
+
+x = x + 1
+
+IF (x > xx) THEN
+x = 0
+y = y + 1
+END IF
+
+LINE (x, yy - y)-(x, yy - y), cl
+
+IF (ps < en OR y <= yy) THEN GOTO cnt
+
+CLOSE #1
+SOUND 2000, 10
+
+DEFSNG P
+FUNCTION crc (a AS INTEGER)
+IF (a < 0) THEN crc = 0 ELSE crc = a
+END FUNCTION
+

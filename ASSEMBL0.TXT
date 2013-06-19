@@ -1,0 +1,462 @@
+DECLARE FUNCTION StringCompare% (s$, t$, n$)
+DECLARE SUB SpecialInstruction ()   'yet more left
+DECLARE FUNCTION Register% (s$)
+DECLARE FUNCTION Memory% (s$)
+DECLARE FUNCTION Immediate% (s$)
+DECLARE SUB GetMnemonic ()
+DECLARE FUNCTION PartDetermine% (s$)
+DECLARE SUB PartModify ()
+DECLARE SUB FindStyle ()
+DECLARE SUB LoadOpcodeList ()
+DECLARE SUB MatchOpcode ()
+DECLARE SUB GenerateOpcode (p&)
+DECLARE SUB ErrorHandler ()
+DECLARE SUB FindSingleOp ()
+DECLARE SUB zPostProcessor (assemblyline$)
+DECLARE FUNCTION ShowHex$ (s$)
+
+CONST REG = 0, MEM = 1, IMM = 2, NON = 3
+
+DIM SHARED Mnemonic$, Opcode$, Part1$, Part2$, Parts1%, Parts2%
+DIM SHARED RegisterInf%, MemoryInf%, MemoryData%
+DIM SHARED Immediate1Inf%, Immediate1Data%, Immediate2Inf%, Immediate2Data%
+DIM SHARED Dir%, Signex%, Word%, Check1%, Check2%, Errors%
+DIM SHARED Registers$, Memories$, ReletedData%, MachineCode$, PostInitialize%
+Mnemonic$ = ""
+Opcode$ = ""
+Part1$ = ""
+Part2$ = ""
+Parts1% = 0
+Parts2% = 0
+Dir% = 0
+Signex% = 0
+Word% = 0
+Errors% = 0
+RelatedData% = 0
+DIM SHARED Op%(4)
+DIM SHARED OpcodeTable(0) AS STRING * 32764
+DIM SHARED TableSeg&, TableOff&, TableOffU&, TableEnd&
+Registers$ = "AXBXCXDXSPBPSIDIALBLCLDLAHBHCHDHESCSSS      DS  "
+Memories$ = "[BX+SI]     [BX+DI]     [BP+SI]     [BP+DI]     "
+Memories$ = Memories$ + "[SI]        [DI]        [****]      [BX]        "
+Memories$ = Memories$ + "[BX+SI+**]  [BX+DI+**]  [BP+SI+**]  [BP+DI+**]  "
+Memories$ = Memories$ + "[SI+**]     [DI+**]     [BP+**]     [BX+**]     "
+Memories$ = Memories$ + "[BX+SI+****][BX+DI+****][BP+SI+****][BP+DI+****]"
+Memories$ = Memories$ + "[SI+****]   [DI+****]   [BP+****]   [BX+****]   "
+TableSeg& = VARSEG(OpcodeTable(0))
+TableOff& = VARPTR(OpcodeTable(0)) 'start of fixed type opcodes
+TableOffU& = TableOff& + 23        'start of unfixed type opcodes
+TableEnd& = TableOff& + 32764
+
+'Testing
+DEF SEG = TableSeg&
+POKE 0, ASC("C")
+POKE 1, ASC("L")
+POKE 2, ASC("D")
+POKE 3, 32
+POKE 4, 32
+POKE 5, &HFF
+POKE 6, ASC("E")
+POKE 7, ASC("S")
+POKE 8, ASC(":")
+POKE 9, 32
+POKE 10, 32
+POKE 11, &HFE
+DEF SEG
+zPostProcessor "OUT DX,AL"
+
+SUB ErrorHandler
+
+END SUB
+
+SUB FindSingleOp
+'Start to read the table
+DEF SEG = TableSeg&
+p& = TableOff&    'begining of table
+'Opcode name match
+DO
+IF (PEEK(p&) = Op%(0) AND PEEK(p& + 1) = Op%(1) AND PEEK(p& + 2) = Op%(2) AND PEEK(p& + 3) = Op%(3) AND PEEK(p& + 4) = Op%(4)) THEN
+MachineCode$ = CHR$(PEEK(p& + 5))
+EXIT DO
+END IF
+p& = p& + 6
+LOOP UNTIL p& < TableOff&
+DEF SEG
+END SUB
+
+SUB FindStyle
+Dir% = 1    'default value
+Signex% = 0
+Parts1% = PartDetermine%(Part1$)
+Parts2% = PartDetermine%(Part2$)
+
+'Error detection in parts and setting flags
+PartModify
+
+'Generate opcode list match bytes
+Check2% = 0
+Check1% = (Parts1% * &H40) OR (Parts2% * &H10)
+IF (Parts1% = REG) THEN Check2% = (RegisterInf% \ &H20) AND 1
+IF (Parts1% = IMM) THEN Check2% = Word% + 1
+
+END SUB
+
+SUB GenerateOpcode (p&)
+'Opcode Style
+'Byte style
+'ppqqrrt0 ddwwxxxx cccccccc cccccccc
+'pp = part1  qq = part2  rr = part1pos  t = part1switch   o = opcodesize
+'PartDEF     s
+'00=Reg  01=Mem  10=Imm  11=Non
+'tDEF
+'Reg-Reg/Seg  Mem-?  Imm-?/byte/word/any  Non-?
+'oDEF
+'specified in xxxx
+
+'Get Opcode
+Cd$ = ""
+CdSeg& = VARSEG(Cd$)
+CdOff& = SADD(Cd$)
+DEF SEG = TableSeg&
+
+'Write opcode byte
+b% = PEEK(p& + 1) AND &HF
+FOR i& = 0 TO b%
+Cd$ = Cd$ + CHR$(PEEK(p& + 2 + i&))
+NEXT
+
+'Set ds bit
+b% = PEEK(p& + 1) \ &H40
+IF (b% = 0) THEN GOTO dsbite
+IF (b% = 1) THEN b% = Dir% ELSE b% = Signex%
+DEF SEG = CdSeg&
+POKE CdOff&, PEEK(CdOff&) OR (b% * 2)
+DEF SEG = TableSeg&
+dsbite:
+
+     
+'Set word bit
+b% = (PEEK(p& + 1) \ &H10) AND 3
+IF (b% = 0) THEN GOTO wbite
+DEF SEG = CdSeg&
+IF (b% = 1) THEN
+POKE CdOff&, PEEK(CdOff&) OR Word%
+ELSE
+POKE CdOff&, PEEK(CdOff&) OR (Word% * 8)
+END IF
+DEF SEG = TableSeg&
+wbite:
+
+'Set reg field
+b% = (PEEK(p&) \ 4) AND 3
+IF (b% = 0) THEN GOTO regfielde
+DEF SEG = CdSeg&
+IF (b% = 1) THEN POKE CdOff&, PEEK(CdOff&) OR (RegisterInf% AND 7)
+IF (b% = 2) THEN POKE CdOff&, PEEK(CdOff&) OR ((RegisterInf% AND 7) * 8)
+IF (b% = 3) THEN POKE CdOff& + 1, PEEK(CdOff& + 1) OR ((RegisterInf% AND 7) * 8)
+DEF SEG = TableSeg&
+regfielde:
+
+'Set md r/m field
+IF (Parts2% = MEM OR Parts2% = REG) THEN
+b% = (MemoryInf% AND 7) OR ((MemoryInf% AND &H30) * 4)
+DEF SEG = CdSeg&
+IF (b% = 1) THEN POKE CdOff& + 1, PEEK(CdOff& + 1) OR b%
+IF (b% = 2) THEN POKE CdOff& + 1, PEEK(CdOff& + 1) OR b%
+IF (b% = 3) THEN POKE CdOff& + 1, PEEK(CdOff& + 1) OR b%
+IF ((MemoryInf% AND &H30 = &H10) OR (MemoryInf% AND &H30 = &H20)) THEN Cd$ = Cd$ + MKI$(MemoryData%)
+DEF SEG = TableSeg&
+END IF
+
+'Write Immediate data
+IF (Parts1% = IMM OR (Parts1% <> IMM AND Parts2% = IMM)) THEN
+Cd$ = Cd$ + LEFT$(MKI$(Immediate1Data%), Word% + 1)
+IF (Parts1% = IMM AND Parts2% = IMM) THEN Cd$ = Cd$ + MKI$(Immediate2Data%)
+END IF
+
+MachineCode$ = Cd$
+'All over.
+END SUB
+
+SUB GetMnemonic
+SpecialInstruction
+Part1$ = ""
+Part2$ = ""
+v% = INSTR(Mnemonic$, " ")
+IF (v% <= 0) THEN v% = LEN(Mnemonic$) + 1: opend% = 1
+Opcode$ = MID$(Mnemonic$, 1, v% - 1)
+Opcode$ = Opcode$ + SPACE$(5 - LEN(Opcode$))
+IF (opend% = 1) THEN GOTO getmne
+v2% = INSTR(v% + 1, Mnemonic$, ",")
+IF (v% <= 0) THEN v% = LEN(Mnemonic$) + 1: opend% = 1
+Part1$ = MID$(Mnemonic$, v% + 1, v2% - v% - 1)
+IF (opend% = 1) THEN GOTO getmne
+Part2$ = MID$(Mnemonic$, v2% + 1, LEN(Mnemonic$) - v2%)
+getmne:
+
+'Create Op%(array) that contains Opcode in ASCII
+FOR i% = 1 TO 5
+Op%(i% - 1) = ASC(MID$(Opcode$, i%, 1))
+NEXT
+
+END SUB
+
+FUNCTION Immediate% (s$)
+a% = -1
+IF (LEN(s$) > 4 OR LEN(s$) = 0) THEN GOTO imm0
+FOR i% = 1 TO LEN(s$)
+b% = ASC(MID$(s$, i%, 1))
+IF (b% >= 65 AND b% <= 70) THEN
+c& = c& * &H10 + (b% - 55)
+ELSEIF (b% >= 48 AND b% <= 57) THEN c& = c& * &H10 + (b% - 48)
+ELSE GOTO imm0
+END IF
+NEXT
+IF (c& > &H7FFF) THEN c& = c& - 65536
+RelatedData% = CINT(c&)
+IF (LEN(s$) > 2) THEN
+a% = a% OR &H10
+b% = SGN(a%)
+IF (b% = 1) THEN b% = 0
+IF ((c& \ &H100) = b%) THEN a% = a% OR &H20
+END IF
+imm0:
+Immediate% = a%
+'Immediate = 00sw 0000 [data]
+END FUNCTION
+
+SUB LoadOpcodeList
+'Opcode Style
+'Byte style
+'ppqqrrt0 ddwwxxxx cccccccc cccccccc
+'pp = part1  qq = part2  rr = part1pos  t = part1switch   o = opcodesize
+'PartDEF     s
+'00=Reg  01=Mem  10=Imm  11=Non
+'tDEF
+'Reg-Reg/Seg  Mem-?  Imm-?/byte/word/any  Non-?
+'oDEF
+'specified in xxxx
+
+'ppqq0000
+'000000t0
+fr% = FREEFILE
+OPEN "B", #fr%, "Table.dat"
+GET #fr%, 1, OpcodeTable(0)
+CLOSE #fr%
+PostInitialize% = 1
+END SUB
+
+SUB MatchOpcode
+'Start to read the table
+DEF SEG = TableSeg&
+p& = TableOffU&
+
+'Opcode name match
+DO
+IF (PEEK(p&) = Op%(0) AND PEEK(p& + 1) = Op%(1) AND PEEK(p& + 2) = Op%(2) AND PEEK(p& + 3) = Op%(3) AND PEEK(p& + 4) = Op%(4)) THEN
+v% = PEEK(p& + 5)  'first information byte
+w% = PEEK(p& + 6)  'second information byte
+IF (v% AND Check1% = Check1%) THEN   'Opcode Check1 match
+IF (Parts1% = REG) THEN              'Opcode Check2 match
+IF (v% AND Check2% = Check2%) THEN GOTO Opcodefound
+ELSEIF ((Parts1% = IMM) AND (w% AND &H30 = 0)) THEN
+IF (v% AND Check2% = Check2%) THEN GOTO Opcodefound
+ELSE
+GOTO Opcodefound
+END IF
+END IF
+END IF
+p& = p& + (w% AND 16) + 7
+LOOP UNTIL (p& > TableEnd&)
+Errors% = 0 'opcode not found
+GOTO mtche
+Opcodefound:
+GenerateOpcode (p&)
+mtche:
+END SUB
+
+FUNCTION Memory% (s$)
+a% = -1
+IF (LEN(s$) > 12) THEN GOTO mem0
+t$ = s$ + SPACE$(12 - LEN(s$))
+FOR i% = 1 TO LEN(Memories$) STEP 12
+IF StringCompare%(t$, MID$(Memories$, i%, 12), "*") THEN
+v% = INSTR(i%, Memories$, "*")
+IF (v% <= 0) THEN
+c% = 0
+ELSEIF (MID$(Memories$, v%, 4) = "****") THEN
+d% = Immediate%(MID$(s$, 1 + v% - i%, 4))
+c% = RelatedData%
+ELSE
+d% = Immediate%(MID$(s$, 1 + v% - i%, 2))
+c% = RelatedData%
+END IF
+b% = (i% - 1) \ 12
+a% = ((b% \ 8) * &H10) OR (b% AND 7)
+GOTO mem0
+END IF
+NEXT
+a% = -1
+mem0:
+Memory% = a%
+RelatedData% = c%
+'Memory = 01md 0r/m
+END FUNCTION
+
+FUNCTION PartDetermine% (s$)
+'See if register
+a% = Register%(s$)
+IF (a% <> -1) THEN
+IF (RegisterInf% = 0) THEN RegisterInf% = a% ELSE MemoryInf% = a%
+a% = REG
+GOTO prtdtr
+END IF
+'See if memory
+a% = Memory%(s$)
+IF (a% <> -1) THEN
+MemoryInf% = a%
+a% = MEM
+MemoryData% = RelatedData%
+GOTO prtdtr
+END IF
+'See if immediate
+a% = Immediate%(s$)
+IF (a% <> -1) THEN
+IF (Immediate1Inf% = 0) THEN
+Immediate1Inf% = a%
+Immediate1Data% = RelatedData%
+ELSE
+Immediate2Inf% = a%
+Immediate2Data% = RelatedData%
+END IF
+a% = IMM
+END IF
+'It is none.
+a% = NON
+prtdtr:
+PartDetermine% = a%
+END FUNCTION
+
+SUB PartModify
+
+'not,else
+IF (Parts1% = NON AND Parts2% <> NON) THEN Errors% = 0
+'imm,reg
+IF (Parts1% = IMM AND Parts2% = REG) THEN Errors% = 0
+'imm,mem
+IF (Parts1% = IMM AND Parts2% = MEM) THEN Errors% = 0
+'mem,mem
+IF (Parts1% = MEM AND Parts2% = MEM) THEN Errors% = 0
+
+'Set reg,reg to reg,mem(3)
+IF (Parts1% = REG AND Parts2% = REG) THEN  'reg,reg
+IF (MemoryInf% AND &H20 = &H20) THEN SWAP RegisterInf%, MemoryInf%: Dir% = 0 'reg,seg
+Wcheck% = (MemoryInf% \ &H10) AND 1
+MemoryInf% = MemoryInf% AND &H70
+END IF
+
+'Set mem,reg to reg,mem
+IF (Parts1% = MEM AND Parts2% = REG) THEN Dir% = 0
+
+'Set mem,imm
+IF (Parts1% = MEM AND Parts2% = IMM) THEN   'mem
+Word% = (Immediate1Inf% \ &H10) AND 1
+GOTO nosetword
+END IF
+
+IF (Parts2% = IMM) THEN Wcheck% = (Immediate2Inf% \ &H10) AND 1
+
+'Setting flags
+'Set Word
+IF (Parts1% = REG) THEN Word% = (RegisterInf% \ &H10) AND 1
+IF (Parts1% = IMM) THEN Word% = (Immediate1Inf% \ &H10) AND 1
+IF (Word% <> Wcheck%) THEN Errors% = 0   'unmatch
+
+nosetword:
+'Set Signex
+IF (Parts1% = IMM OR Parts2% = IMM) THEN Signex% = (Immediate1Inf% \ &H20) AND 1
+
+END SUB
+
+FUNCTION Register% (s$)
+a% = -1
+IF (LEN(s$) <> 2) THEN GOTO reg0
+'It maybe a register
+FOR i% = 1 TO LEN(Registers$) STEP 2
+IF (MID$(Registers$, i%, 2) = s$) THEN
+b% = (i% - 1) \ 2
+IF (b% >= 16) THEN
+a% = &H30
+ELSEIF (b% < 8) THEN a% = &H10
+END IF
+a% = a% OR (b% AND 7)
+GOTO reg0
+END IF
+NEXT
+a% = -1
+reg0:
+Register% = a%
+'Register = 00sw 0rrr
+END FUNCTION
+
+FUNCTION ShowHex$ (s$)
+FOR i% = 1 TO LEN(s$)
+a$ = a$ + HEX$(ASC(MID$(s$, i%, 1)))
+NEXT
+ShowHex$ = a$
+END FUNCTION
+
+SUB SpecialInstruction
+IF StringCompare%(Mnemonic$, "OUT DX,AL", "") THEN
+Mnemonic$ = "OUTDB"
+ELSEIF StringCompare%(Mnemonic$, "OUT DX,AX", "") THEN Mnemonic$ = "OUTDW"
+ELSEIF StringCompare%(Mnemonic$, "OUT **,AL", "*") THEN Mnemonic$ = "OUTB " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "OUT **,AX", "*") THEN Mnemonic$ = "OUTW " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "IN AL,DX", "") THEN Mnemonic$ = "INDB"
+ELSEIF StringCompare%(Mnemonic$, "IN AX,DX", "") THEN Mnemonic$ = "INDW"
+ELSEIF StringCompare%(menmonic$, "IN AL,**", "*") THEN Mnemonic$ = "INDB " + MID$(Mnemonic$, 7, 2)
+ELSEIF StringCompare%(Mnemonic$, "IN AX,**", "*") THEN Mnemonic$ = "INDW " + MID$(Mnemonic$, 7, 2)
+ELSEIF StringCompare%(Mnemonic$, "SHL **,1", "*") THEN Mnemonic$ = "SHL1 " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "SHL **,CL", "*") THEN Mnemonic$ = "SHLC " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "SHR **,1", "*") THEN Mnemonic$ = "SHR1 " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "SHR **,CL", "*") THEN Mnemonic$ = "SHRC " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "SAR **,1", "*") THEN Mnemonic$ = "SAR1 " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "SAR **,CL", "*") THEN Mnemonic$ = "SARC " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "ROL **,1", "*") THEN Mnemonic$ = "ROL1 " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "ROL **,CL", "*") THEN Mnemonic$ = "ROLC " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "ROR **,1", "*") THEN Mnemonic$ = "ROR1 " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "ROR **,CL", "*") THEN Mnemonic$ = "RORC " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "RCL **,1", "*") THEN Mnemonic$ = "RCL1 " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "RCL **,CL", "*") THEN Mnemonic$ = "RCLC " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "RCR **,1", "*") THEN Mnemonic$ = "SHL1 " + MID$(Mnemonic$, 5, 2)
+ELSEIF StringCompare%(Mnemonic$, "RCR **,CL", "*") THEN Mnemonic$ = "SHLC " + MID$(Mnemonic$, 5, 2)
+'jmp xxxx:xxxx = jmp xxxx,xxxx
+END IF
+END SUB
+
+FUNCTION StringCompare% (s$, t$, n$)
+IF (n$ = "") THEN a% = (s$ = t$): GOTO strcmp0
+IF (LEN(s$) <> LEN(t$)) THEN GOTO strcmp0
+FOR i% = 1 TO LEN(s$)
+a$ = MID$(t$, i%, 1)
+IF (a$ <> n$ AND a$ <> MID$(s$, i%, 1)) THEN GOTO strcmp0
+NEXT
+a% = -1
+strcmp0:
+StringCompare% = a%
+END FUNCTION
+
+SUB zPostProcessor (assemblyline$)
+IF (PostInitialize% = 0) THEN LoadOpcodeList
+MachineCode$ = ""
+Mnemonic$ = UCASE$(assemblyline$)
+SpecialInstruction
+GetMnemonic
+FindSingleOp
+IF (MachineCode$ = "") THEN
+FindStyle
+MatchOpcode
+END IF
+PRINT "Machine code:" + ShowHex$(MachineCode$)
+END SUB
+

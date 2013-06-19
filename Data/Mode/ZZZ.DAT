@@ -1,0 +1,44 @@
+DECLARE SUB make (f AS STRING)
+DECLARE SUB combine (f1 AS STRING, f2 AS STRING)
+CLS
+COLOR 12
+PRINT "Drawer Files EXE Maker"
+PRINT "----------------------"
+PRINT ""
+cc$ = CHR$(34)
+PRINT ""
+INPUT "File name"; f$
+OPEN "I", #1, "drawdat.dat"
+LINE INPUT #1, zz$
+OPEN "O", #2, "Result.txt"
+PRINT #2, zz$
+LINE INPUT #1, zz$
+PRINT #2, "OPEN " + cc$ + "I" + cc$ + ", #1, " + cc$ + f$ + ".exe" + cc$
+e1f2: IF EOF(1) THEN GOTO e1f1
+LINE INPUT #1, zz$
+PRINT #2, zz$
+GOTO e1f2
+e1f1: CLOSE #1, #2
+make "Result"
+combine "Result.exe", f$
+SYSTEM
+
+SUB combine (f1 AS STRING, f2 AS STRING)
+OPEN "I", #2, f2$
+OPEN "A", #1, f1$
+cef2: IF EOF(2) THEN GOTO cef1
+LINE INPUT #2, zz$
+PRINT #1, zz$
+GOTO cef2
+cef1: CLOSE #1, #2
+END SUB
+
+SUB make (f AS STRING)
+OPEN "O", #1, "ram.bat"
+PRINT #1, "BC " + f$ + ".TXT/D/O"
+PRINT #1, "LINK /EX " + f$ + "," + f$ + ".EXE,NUL,;"
+CLOSE #1
+SHELL "RAM"
+SHELL "DEL RAM.BAT"
+END SUB
+

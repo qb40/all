@@ -1,0 +1,99 @@
+DECLARE SUB initialize ()
+DECLARE FUNCTION nospc$ (a$)
+'|||||||||||||||||||||||CFG|||||||||||||||||||||||||||||||
+CLS
+INPUT "3DS slide file name(for characters)"; fl$
+INPUT "Start"; starts%
+INPUT "Ends"; ends%
+n% = ends% - starts% + 1
+fl1$ = fl$ + ".3ds"
+INPUT "Character group name"; ch$
+
+OPEN "B", #1, fl1$
+fl2$ = nospc$(ch$ + STR$(starts%))
+fl2$ = fl2$ + ".cfg"
+
+OPEN "B", #2, fl2$
+SEEK #2, 1
+read$ = INPUT$(4, #2)
+PUT #1, 1, read$
+read$ = CHR$(n% MOD 256) + CHR$(INT(n% / 256))
+PUT #1, 5, read$
+pos1& = 7
+CLOSE #2
+
+PRINT "Now combining starts."
+FOR i% = starts% TO ends%
+PRINT "File"; i%; ":"
+cfg$ = nospc$(ch$ + STR$(i%) + ".cfg")
+PRINT "CFG file name : "; cfg$
+k$ = INPUT$(1)
+PRINT "Adding . . ."
+OPEN "B", #2, cfg$
+        FOR i& = 5 TO LOF(2)
+        SEEK #2, i&
+        read$ = INPUT$(1, #2)
+        PUT #1, pos1&, read$
+        pos1& = pos1& + 1
+        NEXT
+PRINT "Added."
+CLOSE #2
+k$ = INPUT$(1)
+NEXT
+PRINT "All done."
+CLOSE #1
+k$ = INPUT$(1)
+PRINT "Check."
+k$ = INPUT$(1)
+SCREEN 13
+initialize
+INPUT "Time gap"; t!
+
+OPEN "B", #1, fl1$
+SEEK #1, 1
+read$ = INPUT$(2, #1)
+xres& = ASC(LEFT$(read$, 1)) + ASC(RIGHT$(read$, 1)) * 256
+read$ = INPUT$(2, #1)
+yres& = ASC(LEFT$(read$, 1)) + ASC(RIGHT$(read$, 1)) * 256
+read$ = INPUT$(2, #1)
+slds% = ASC(LEFT$(read$, 1)) + ASC(RIGHT$(read$, 1)) * 256
+pos1& = 7
+FOR k% = 1 TO slds%
+FOR j% = yres& TO 0 STEP -1
+FOR i% = 0 TO xres&
+SEEK #1, pos1&
+LINE (i%, j%)-(i%, j%), ASC(INPUT$(1, #1) + CHR$(0))
+pos1& = pos1& + 1
+NEXT
+NEXT
+FOR dummy% = 1 TO t!
+SOUND 21000, .5
+NEXT
+NEXT
+CLOSE #1
+k$ = INPUT$(1)
+SYSTEM
+
+SUB initialize
+FOR i% = 0 TO 251
+c% = i%
+r% = INT(c% / 36)
+c% = c% - (36 * r%)
+g% = INT(c% / 6)
+c% = c% - (6 * g%)
+b% = c%
+r% = r% * 9
+g% = g% * 9
+b% = b% * 9
+PALETTE i%, 65536 * b% + 256 * g% + r%
+NEXT
+END SUB
+
+FUNCTION nospc$ (a$)
+FOR i% = 1 TO LEN(a$)
+b$ = MID$(a$, i%, 1)
+IF (b$ <> " ") THEN c$ = c$ + b$
+NEXT
+nospc$ = c$
+END FUNCTION
+
